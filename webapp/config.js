@@ -1,13 +1,10 @@
 // Configuration file for the STT Model Evaluator
 const config = {
     // Base directory for audio files
-    AUDIO_BASE_DIR: process.env.AUDIO_BASE_DIR || 'D:\\Final_data_MRK\\Modified',
+    AUDIO_BASE_DIR: process.env.AUDIO_BASE_DIR || 'D:\\cv-corpus-23.0-2025-09-05\\bn\\clips',
     
-    // Directory for API responses
-    API_RESPONSE_DIR: process.env.API_RESPONSE_DIR || 'D:\\Final_data_MRK\\api_response',
-    
-    // STT API endpoint
-    STT_API_URL: process.env.STT_API_URL || 'https://voice.bangla.gov.bd:9394',
+    // Directory for transcriptions
+    TRANSCRIPTION_DIR: process.env.TRANSCRIPTION_DIR || 'D:\\cv-corpus-23.0-2025-09-05\\bn\\csedu_labels',
     
     // Server port
     PORT: process.env.PORT || 3002,

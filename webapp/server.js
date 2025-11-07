@@ -1,7 +1,6 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const io = require('socket.io-client');
 
 // Load configuration
 let config;
@@ -14,13 +13,7 @@ try {
 }
 
 const app = express();
-const { AUDIO_BASE_DIR, API_RESPONSE_DIR, STT_API_URL, PORT, SESSION_TIMEOUT, DEBUG } = config;
-
-// Ensure API response directory exists
-if (!fs.existsSync(API_RESPONSE_DIR)) {
-    fs.mkdirSync(API_RESPONSE_DIR, { recursive: true });
-    console.log(`Created API response directory: ${API_RESPONSE_DIR}`);
-}
+const { AUDIO_BASE_DIR, TRANSCRIPTION_DIR, PORT, SESSION_TIMEOUT, DEBUG } = config;
 
 // Helper function to normalize paths
 function normalizePath(pathStr) {
@@ -251,7 +244,7 @@ app.get('/api/absolutePath', requireAuth, (req, res) => {
     res.json({ absolutePath: normalizedPath });
 });
 
-// Get or generate transcript via API
+// Get transcript from csedu_labels directory
 app.get('/api/transcript', requireAuth, async (req, res) => {
     const filePath = req.query.file;
     if (!filePath) {
@@ -261,103 +254,22 @@ app.get('/api/transcript', requireAuth, async (req, res) => {
     const decodedPath = decodeURIComponent(filePath);
     const audioFileName = path.basename(decodedPath, path.extname(decodedPath));
     const jsonFileName = audioFileName + '.json';
-    const jsonFullPath = path.join(API_RESPONSE_DIR, jsonFileName);
+    const jsonFullPath = path.join(TRANSCRIPTION_DIR, jsonFileName);
 
-    // Check if JSON already exists
+    // Check if JSON exists
     if (fs.existsSync(jsonFullPath)) {
         try {
             const content = fs.readFileSync(jsonFullPath, 'utf8');
             const jsonData = JSON.parse(content);
             return res.json(jsonData);
         } catch (error) {
-            console.error('Error reading existing JSON:', error);
+            console.error('Error reading JSON:', error);
+            return res.status(500).json({ error: 'Failed to read transcript file' });
         }
-    }
-
-    // Generate transcript via API
-    const windowsPath = decodedPath.replace(/\//g, path.sep);
-    const audioFullPath = path.resolve(AUDIO_BASE_DIR, windowsPath);
-
-    if (!fs.existsSync(audioFullPath)) {
-        return res.status(404).json({ error: 'Audio file not found' });
-    }
-
-    try {
-        const transcript = await transcribeAudio(audioFullPath);
-        
-        // Save to JSON file
-        fs.writeFileSync(jsonFullPath, JSON.stringify(transcript, null, 2), 'utf8');
-        
-        res.json(transcript);
-    } catch (error) {
-        console.error('Transcription error:', error);
-        res.status(500).json({ error: 'Failed to transcribe audio' });
+    } else {
+        return res.status(404).json({ error: 'Transcript not found' });
     }
 });
-
-// Function to transcribe audio using Socket.IO API
-async function transcribeAudio(audioFilePath) {
-    return new Promise((resolve, reject) => {
-        const socket = io(STT_API_URL, {
-            transports: ['websocket'],
-            rejectUnauthorized: false
-        });
-
-        let result = null;
-        const timeout = setTimeout(() => {
-            socket.disconnect();
-            reject(new Error('Transcription timeout'));
-        }, 60000); // 60 second timeout
-
-        socket.on('connect', () => {
-            if (DEBUG) console.log('Connected to STT API');
-            
-            // Read and send audio file
-            const audioData = fs.readFileSync(audioFilePath);
-            const encodedAudio = audioData.toString('base64');
-            
-            const payload = {
-                index: 0,
-                audio: encodedAudio,
-                endOfStream: true
-            };
-            
-            socket.emit('audio_transmit_upload', payload);
-        });
-
-        socket.on('result_upload', (data) => {
-            if (DEBUG) console.log('Received result_upload');
-            clearTimeout(timeout);
-            result = data;
-            socket.disconnect();
-            
-            // Extract transcript from predicted_words
-            let transcript = '';
-            if (data.output && data.output.predicted_words) {
-                transcript = data.output.predicted_words
-                    .map(item => item.word)
-                    .join('');
-            }
-            
-            resolve({
-                ...data,
-                transcript: transcript
-            });
-        });
-
-        socket.on('connect_error', (error) => {
-            clearTimeout(timeout);
-            socket.disconnect();
-            reject(new Error(`Connection error: ${error.message}`));
-        });
-
-        socket.on('error', (error) => {
-            clearTimeout(timeout);
-            socket.disconnect();
-            reject(new Error(`Socket error: ${error}`));
-        });
-    });
-}
 
 // Serve HTML pages
 app.get('/', (req, res) => {
@@ -373,5 +285,5 @@ app.get('/login.html', (req, res) => {
 app.listen(PORT, () => {
     console.log(`STT Model Evaluator running at http://localhost:${PORT}`);
     console.log(`Audio files from: ${AUDIO_BASE_DIR}`);
-    console.log(`API responses saved to: ${API_RESPONSE_DIR}`);
+    console.log(`Transcriptions from: ${TRANSCRIPTION_DIR}`);
 });

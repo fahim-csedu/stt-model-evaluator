@@ -1,13 +1,12 @@
 # STT Model Evaluator Web App
 
-A web application for evaluating STT (Speech-to-Text) models by playing audio files and displaying transcriptions generated via API.
+A web application for evaluating STT (Speech-to-Text) models by playing audio files and displaying pre-generated transcriptions.
 
 ## Features
 
-- Browse audio files from `D:\Final_data_MRK\Modified` directory
+- Browse audio files from `D:\cv-corpus-23.0-2025-09-05\bn\clips` directory
 - Play audio files directly in the browser
-- Automatically fetch transcriptions from STT API
-- Save API responses as JSON files in `D:\Final_data_MRK\api_response`
+- Display transcriptions from `D:\cv-corpus-23.0-2025-09-05\bn\csedu_labels`
 - User authentication system
 - Keyboard navigation support
 
@@ -32,25 +31,23 @@ npm start
 ## Configuration
 
 Edit `config.local.js` to customize:
-- `AUDIO_BASE_DIR`: Path to audio files (default: `D:\Final_data_MRK\Modified`)
-- `API_RESPONSE_DIR`: Path to save API responses (default: `D:\Final_data_MRK\api_response`)
-- `STT_API_URL`: STT API endpoint (default: `https://voice.bangla.gov.bd:9394`)
+- `AUDIO_BASE_DIR`: Path to audio files (default: `D:\cv-corpus-23.0-2025-09-05\bn\clips`)
+- `TRANSCRIPTION_DIR`: Path to transcription JSON files (default: `D:\cv-corpus-23.0-2025-09-05\bn\csedu_labels`)
 - `PORT`: Server port (default: 3002)
 
 ## How It Works
 
-1. The app lists audio files from the configured directory
-2. When you select an audio file, it checks if a JSON response already exists
-3. If not, it sends the audio to the STT API via Socket.IO
-4. The API response is saved as a JSON file with the same name as the audio file
-5. The transcript is extracted from the `predicted_words` array and displayed
+1. The app lists audio files from the clips directory
+2. When you select an audio file, it looks for a matching JSON file in the csedu_labels directory
+3. The transcript is loaded and displayed from the JSON file
+4. JSON files should have the same name as the audio file (e.g., `audio.mp3` → `audio.json`)
 
-## API Response Format
+## Transcription File Format
 
-The app expects responses in this format:
+The app expects JSON files in this format:
 ```json
 {
-  "index": "0",
+  "transcript": "হাই আমি এখানে আপনার টাইপ করা যেকোনো লেখা পড়তে পারি",
   "output": {
     "predicted_words": [
       {
@@ -64,7 +61,7 @@ The app expects responses in this format:
 }
 ```
 
-The transcript is created by concatenating all `word` values from `predicted_words`.
+The app will display the `transcript` field or extract text from `predicted_words` if available.
 
 ## Default Login Credentials
 

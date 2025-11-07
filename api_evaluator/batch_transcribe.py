@@ -27,9 +27,9 @@ try:
     )
 except ImportError:
     # Fallback to default configuration
-    AUDIO_BASE_DIR = r"D:\Final_data_MRK\Modified"
-    API_RESPONSE_DIR = r"D:\Final_data_MRK\api_response"
-    CSV_OUTPUT_PATH = r"D:\Final_data_MRK\transcription_results.csv"
+    AUDIO_BASE_DIR = r"D:\cv-corpus-23.0-2025-09-05\bn\clips"
+    API_RESPONSE_DIR = r"D:\cv-corpus-23.0-2025-09-05\bn\csedu_labels"
+    CSV_OUTPUT_PATH = r"D:\cv-corpus-23.0-2025-09-05\bn\transcription_results.csv"
     SOCKET_URL = "https://voice.bangla.gov.bd:9394"
     AUDIO_EXTENSIONS = ['.wav', '.flac', '.mp3', '.m4a', '.ogg']
     API_TIMEOUT = 60
@@ -70,15 +70,17 @@ def find_all_audio_files(base_dir):
 
 
 def get_existing_transcripts():
-    """Get set of audio files that already have transcripts"""
-    existing = set()
+    """Get dict of audio files that already have transcripts with their relative paths"""
+    existing = {}
     response_path = Path(API_RESPONSE_DIR)
     
     if response_path.exists():
-        for json_file in response_path.glob('*.json'):
-            # Remove .json extension to get the base name
-            base_name = json_file.stem
-            existing.add(base_name)
+        for json_file in response_path.rglob('*.json'):
+            # Get relative path from API_RESPONSE_DIR
+            relative_path = json_file.relative_to(response_path)
+            # Store with relative path as key (without .json extension)
+            key = str(relative_path.with_suffix(''))
+            existing[key] = str(json_file)
     
     return existing
 
@@ -203,10 +205,14 @@ def process_audio_files():
     print(f"Found {len(existing_transcripts)} existing transcripts")
     
     # Filter out already processed files
+    base_path = Path(AUDIO_BASE_DIR)
     files_to_process = []
     for audio_file in audio_files:
-        base_name = audio_file.stem
-        if base_name not in existing_transcripts:
+        # Get relative path from base directory
+        relative_path = audio_file.relative_to(base_path)
+        # Remove extension to match with existing transcripts
+        relative_key = str(relative_path.with_suffix(''))
+        if relative_key not in existing_transcripts:
             files_to_process.append(audio_file)
     
     print(f"Files to process: {len(files_to_process)}")
@@ -222,9 +228,12 @@ def process_audio_files():
     # Process each file
     success_count = 0
     error_count = 0
+    base_path = Path(AUDIO_BASE_DIR)
     
     for idx, audio_file in enumerate(files_to_process, 1):
-        print(f"\n[{idx}/{len(files_to_process)}] Processing: {audio_file.name}")
+        # Get relative path for display and folder structure
+        relative_path = audio_file.relative_to(base_path)
+        print(f"\n[{idx}/{len(files_to_process)}] Processing: {relative_path}")
         
         try:
             # Get audio duration
@@ -234,14 +243,17 @@ def process_audio_files():
             result = transcribe_audio(str(audio_file))
             
             if result['success'] and result['data']:
-                # Save JSON response
-                json_filename = audio_file.stem + '.json'
-                json_path = os.path.join(API_RESPONSE_DIR, json_filename)
+                # Create output path maintaining folder structure
+                json_relative_path = relative_path.with_suffix('.json')
+                json_path = Path(API_RESPONSE_DIR) / json_relative_path
+                
+                # Ensure parent directories exist
+                json_path.parent.mkdir(parents=True, exist_ok=True)
                 
                 with open(json_path, 'w', encoding='utf-8') as f:
                     json.dump(result['data'], f, ensure_ascii=False, indent=2)
                 
-                print(f"  ✓ Saved JSON: {json_filename}")
+                print(f"  ✓ Saved JSON: {json_relative_path}")
                 
                 # Extract transcript
                 transcript = extract_transcript_text(result['data'])
@@ -260,7 +272,7 @@ def process_audio_files():
                 # Append to CSV
                 csv_row = {
                     'audio_file_path': str(audio_file),
-                    'transcript_file_path': json_path,
+                    'transcript_file_path': str(json_path),
                     'transcript': transcript,
                     'duration_seconds': duration if duration else 'N/A',
                     'timestamp': datetime.now().isoformat()

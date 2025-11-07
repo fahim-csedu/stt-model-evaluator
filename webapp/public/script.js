@@ -238,7 +238,7 @@ class AudioFileBrowser {
             this.transcriptionStatus.className = 'transcription-status loading';
             this.transcriptContent.textContent = 'Loading...';
             
-            // Fetch transcript (will generate if not exists)
+            // Fetch transcript from csedu_labels
             const response = await fetch(`/api/transcript?file=${encodeURIComponent(item.audioFile)}`, {
                 headers: {
                     'x-session-id': this.sessionId

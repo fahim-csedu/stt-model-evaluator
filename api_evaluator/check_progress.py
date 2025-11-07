@@ -9,9 +9,9 @@ from pathlib import Path
 try:
     from config import AUDIO_BASE_DIR, API_RESPONSE_DIR, CSV_OUTPUT_PATH, AUDIO_EXTENSIONS
 except ImportError:
-    AUDIO_BASE_DIR = r"D:\Final_data_MRK\Modified"
-    API_RESPONSE_DIR = r"D:\Final_data_MRK\api_response"
-    CSV_OUTPUT_PATH = r"D:\Final_data_MRK\transcription_results.csv"
+    AUDIO_BASE_DIR = r"D:\cv-corpus-23.0-2025-09-05\bn\clips"
+    API_RESPONSE_DIR = r"D:\cv-corpus-23.0-2025-09-05\bn\csedu_labels"
+    CSV_OUTPUT_PATH = r"D:\cv-corpus-23.0-2025-09-05\bn\transcription_results.csv"
     AUDIO_EXTENSIONS = ['.wav', '.flac', '.mp3', '.m4a', '.ogg']
 
 
