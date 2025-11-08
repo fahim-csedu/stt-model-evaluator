@@ -94,22 +94,29 @@ class AudioFileBrowser {
     
     async copyRowData() {
         try {
+            // Collect background noise checkboxes
+            const noises = [];
+            if (document.getElementById('annNoiseMusic').checked) noises.push('Music');
+            if (document.getElementById('annNoiseCrowd').checked) noises.push('Crowd');
+            if (document.getElementById('annNoiseTraffic').checked) noises.push('Traffic');
+            if (document.getElementById('annNoiseEcho').checked) noises.push('Echo');
+            
             // Get all form values in the order they should appear in Google Sheets
             const rowData = [
                 document.getElementById('annFilename').value || '',
                 document.getElementById('annDuration').value || '',
                 this.referenceContent.textContent || '',
                 this.transcriptContent.textContent || '',
-                document.getElementById('annRefCorrect').value || '',
-                document.getElementById('annModelCorrect').value || '',
+                document.getElementById('annRefCorrect').checked ? 'yes' : 'no',
+                document.getElementById('annModelCorrect').checked ? 'yes' : 'no',
                 document.getElementById('annIdealTranscript').value || '',
-                document.getElementById('annProperNoun').value || '',
-                document.getElementById('annAccentVariation').value || '',
-                document.getElementById('annNumericDate').value || '',
-                document.getElementById('annHomophone').value || '',
-                document.getElementById('annForeignLanguage').value || '',
+                document.getElementById('annProperNoun').checked ? 'yes' : 'no',
+                document.getElementById('annAccentVariation').checked ? 'yes' : 'no',
+                document.getElementById('annNumericDate').checked ? 'yes' : 'no',
+                document.getElementById('annHomophone').checked ? 'yes' : 'no',
+                document.getElementById('annForeignLanguage').checked ? 'yes' : 'no',
                 document.getElementById('annGender').value || '',
-                document.getElementById('annBackgroundNoise').value || '',
+                noises.length > 0 ? noises.join(', ') : 'None',
                 document.getElementById('annAudioQuality').value || '',
                 document.getElementById('annNotes').value || ''
             ];
@@ -439,36 +446,51 @@ class AudioFileBrowser {
     }
     
     clearAnnotationForm() {
-        const fields = [
-            'annRefCorrect', 'annModelCorrect', 'annIdealTranscript',
-            'annProperNoun', 'annAccentVariation', 'annNumericDate',
-            'annHomophone', 'annForeignLanguage', 'annBackgroundNoise',
-            'annAudioQuality', 'annNotes'
+        // Clear checkboxes
+        const checkboxes = [
+            'annRefCorrect', 'annModelCorrect', 'annProperNoun', 
+            'annAccentVariation', 'annNumericDate', 'annHomophone', 
+            'annForeignLanguage', 'annNoiseMusic', 'annNoiseCrowd',
+            'annNoiseTraffic', 'annNoiseEcho'
         ];
-        
-        fields.forEach(id => {
+        checkboxes.forEach(id => {
             const element = document.getElementById(id);
-            if (element.tagName === 'SELECT') {
-                element.value = '';
-            } else {
-                element.value = '';
-            }
+            if (element) element.checked = false;
         });
+        
+        // Clear text fields
+        document.getElementById('annIdealTranscript').value = '';
+        document.getElementById('annNotes').value = '';
+        
+        // Clear selects
+        document.getElementById('annGender').value = '';
+        document.getElementById('annAudioQuality').value = '';
     }
     
     loadAnnotation(annotation) {
-        document.getElementById('annRefCorrect').value = annotation.refCorrect || '';
-        document.getElementById('annModelCorrect').value = annotation.modelCorrect || '';
+        // Load checkboxes
+        document.getElementById('annRefCorrect').checked = annotation.refCorrect === 'yes' || annotation.refCorrect === true;
+        document.getElementById('annModelCorrect').checked = annotation.modelCorrect === 'yes' || annotation.modelCorrect === true;
+        document.getElementById('annProperNoun').checked = annotation.properNoun === 'yes' || annotation.properNoun === true;
+        document.getElementById('annAccentVariation').checked = annotation.accentVariation === 'yes' || annotation.accentVariation === true;
+        document.getElementById('annNumericDate').checked = annotation.numericDate === 'yes' || annotation.numericDate === true;
+        document.getElementById('annHomophone').checked = annotation.homophone === 'yes' || annotation.homophone === true;
+        document.getElementById('annForeignLanguage').checked = annotation.foreignLanguage === 'yes' || annotation.foreignLanguage === true;
+        
+        // Load background noise checkboxes
+        const noises = (annotation.backgroundNoise || '').split(',').map(n => n.trim());
+        document.getElementById('annNoiseMusic').checked = noises.includes('Music');
+        document.getElementById('annNoiseCrowd').checked = noises.includes('Crowd');
+        document.getElementById('annNoiseTraffic').checked = noises.includes('Traffic');
+        document.getElementById('annNoiseEcho').checked = noises.includes('Echo');
+        
+        // Load text fields
         document.getElementById('annIdealTranscript').value = annotation.idealTranscript || '';
-        document.getElementById('annProperNoun').value = annotation.properNoun || '';
-        document.getElementById('annAccentVariation').value = annotation.accentVariation || '';
-        document.getElementById('annNumericDate').value = annotation.numericDate || '';
-        document.getElementById('annHomophone').value = annotation.homophone || '';
-        document.getElementById('annForeignLanguage').value = annotation.foreignLanguage || '';
-        document.getElementById('annGender').value = annotation.gender || '';
-        document.getElementById('annBackgroundNoise').value = annotation.backgroundNoise || '';
-        document.getElementById('annAudioQuality').value = annotation.audioQuality || '';
         document.getElementById('annNotes').value = annotation.notes || '';
+        
+        // Load selects
+        document.getElementById('annGender').value = annotation.gender || '';
+        document.getElementById('annAudioQuality').value = annotation.audioQuality || '';
         
         this.annotationStatus.textContent = `Last saved: ${new Date(annotation.timestamp).toLocaleString()}`;
         this.annotationStatus.className = 'annotation-status';
@@ -476,19 +498,26 @@ class AudioFileBrowser {
     
     async saveAnnotation() {
         try {
+            // Collect background noise checkboxes
+            const noises = [];
+            if (document.getElementById('annNoiseMusic').checked) noises.push('Music');
+            if (document.getElementById('annNoiseCrowd').checked) noises.push('Crowd');
+            if (document.getElementById('annNoiseTraffic').checked) noises.push('Traffic');
+            if (document.getElementById('annNoiseEcho').checked) noises.push('Echo');
+            
             const annotation = {
                 filename: document.getElementById('annFilename').value,
                 duration: document.getElementById('annDuration').value,
-                refCorrect: document.getElementById('annRefCorrect').value,
-                modelCorrect: document.getElementById('annModelCorrect').value,
+                refCorrect: document.getElementById('annRefCorrect').checked ? 'yes' : 'no',
+                modelCorrect: document.getElementById('annModelCorrect').checked ? 'yes' : 'no',
                 idealTranscript: document.getElementById('annIdealTranscript').value,
-                properNoun: document.getElementById('annProperNoun').value,
-                accentVariation: document.getElementById('annAccentVariation').value,
-                numericDate: document.getElementById('annNumericDate').value,
-                homophone: document.getElementById('annHomophone').value,
-                foreignLanguage: document.getElementById('annForeignLanguage').value,
+                properNoun: document.getElementById('annProperNoun').checked ? 'yes' : 'no',
+                accentVariation: document.getElementById('annAccentVariation').checked ? 'yes' : 'no',
+                numericDate: document.getElementById('annNumericDate').checked ? 'yes' : 'no',
+                homophone: document.getElementById('annHomophone').checked ? 'yes' : 'no',
+                foreignLanguage: document.getElementById('annForeignLanguage').checked ? 'yes' : 'no',
                 gender: document.getElementById('annGender').value,
-                backgroundNoise: document.getElementById('annBackgroundNoise').value,
+                backgroundNoise: noises.length > 0 ? noises.join(', ') : 'None',
                 audioQuality: document.getElementById('annAudioQuality').value,
                 notes: document.getElementById('annNotes').value
             };

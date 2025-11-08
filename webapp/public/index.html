@@ -92,21 +92,17 @@
                             </div>
                             
                             <div class="form-row">
-                                <div class="form-group full-width">
-                                    <label>Reference Transcript Correct?</label>
-                                    <select id="annRefCorrect">
-                                        <option value="">Select...</option>
-                                        <option value="yes">Yes</option>
-                                        <option value="no">No</option>
-                                    </select>
+                                <div class="form-group checkbox-group">
+                                    <label>
+                                        <input type="checkbox" id="annRefCorrect">
+                                        Reference Transcript Correct
+                                    </label>
                                 </div>
-                                <div class="form-group full-width">
-                                    <label>Model Transcript Correct?</label>
-                                    <select id="annModelCorrect">
-                                        <option value="">Select...</option>
-                                        <option value="yes">Yes</option>
-                                        <option value="no">No</option>
-                                    </select>
+                                <div class="form-group checkbox-group">
+                                    <label>
+                                        <input type="checkbox" id="annModelCorrect">
+                                        Model Transcript Correct
+                                    </label>
                                 </div>
                             </div>
                             
@@ -116,52 +112,38 @@
                             </div>
                             
                             <div class="form-section">
-                                <h4>Error Categories</h4>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Proper Noun Recognition</label>
-                                        <select id="annProperNoun">
-                                            <option value="">Select...</option>
-                                            <option value="yes">Yes</option>
-                                            <option value="no">No</option>
-                                        </select>
+                                <h4>Error Categories (Check if present)</h4>
+                                <div class="checkbox-grid">
+                                    <div class="form-group checkbox-group">
+                                        <label>
+                                            <input type="checkbox" id="annProperNoun">
+                                            Proper Noun Recognition Error
+                                        </label>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Accent Variation</label>
-                                        <select id="annAccentVariation">
-                                            <option value="">Select...</option>
-                                            <option value="yes">Yes</option>
-                                            <option value="no">No</option>
-                                        </select>
+                                    <div class="form-group checkbox-group">
+                                        <label>
+                                            <input type="checkbox" id="annAccentVariation">
+                                            Accent Variation Issue
+                                        </label>
                                     </div>
-                                </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Numeric/Date Recognition</label>
-                                        <select id="annNumericDate">
-                                            <option value="">Select...</option>
-                                            <option value="yes">Yes</option>
-                                            <option value="no">No</option>
-                                        </select>
+                                    <div class="form-group checkbox-group">
+                                        <label>
+                                            <input type="checkbox" id="annNumericDate">
+                                            Numeric/Date Recognition Error
+                                        </label>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Homophone Confusion</label>
-                                        <select id="annHomophone">
-                                            <option value="">Select...</option>
-                                            <option value="yes">Yes</option>
-                                            <option value="no">No</option>
-                                        </select>
+                                    <div class="form-group checkbox-group">
+                                        <label>
+                                            <input type="checkbox" id="annHomophone">
+                                            Homophone Confusion
+                                        </label>
                                     </div>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label>Contains >10% Foreign Language?</label>
-                                    <select id="annForeignLanguage">
-                                        <option value="">Select...</option>
-                                        <option value="yes">Yes</option>
-                                        <option value="no">No</option>
-                                    </select>
+                                    <div class="form-group checkbox-group">
+                                        <label>
+                                            <input type="checkbox" id="annForeignLanguage">
+                                            Contains >10% Foreign Language
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -177,27 +159,47 @@
                                             <option value="Unknown">Unknown</option>
                                         </select>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Background Noise</label>
-                                        <select id="annBackgroundNoise">
-                                            <option value="">Select...</option>
-                                            <option value="None">None</option>
-                                            <option value="Music">Music</option>
-                                            <option value="Crowd">Crowd</option>
-                                            <option value="Traffic">Traffic</option>
-                                            <option value="Echo">Echo</option>
-                                        </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Background Noise (Check all that apply)</label>
+                                    <div class="checkbox-grid">
+                                        <div class="form-group checkbox-group">
+                                            <label>
+                                                <input type="checkbox" id="annNoiseMusic">
+                                                Music
+                                            </label>
+                                        </div>
+                                        <div class="form-group checkbox-group">
+                                            <label>
+                                                <input type="checkbox" id="annNoiseCrowd">
+                                                Crowd
+                                            </label>
+                                        </div>
+                                        <div class="form-group checkbox-group">
+                                            <label>
+                                                <input type="checkbox" id="annNoiseTraffic">
+                                                Traffic
+                                            </label>
+                                        </div>
+                                        <div class="form-group checkbox-group">
+                                            <label>
+                                                <input type="checkbox" id="annNoiseEcho">
+                                                Echo
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label>Audio Quality</label>
+                                    <label>Audio Quality Rating</label>
                                     <select id="annAudioQuality">
                                         <option value="">Select...</option>
-                                        <option value="Excellent">Excellent</option>
-                                        <option value="Good">Good</option>
-                                        <option value="Fair">Fair</option>
-                                        <option value="Poor">Poor</option>
+                                        <option value="5">5 – High-quality, Clean Bangla speech</option>
+                                        <option value="4">4 – Usable, minor flaws (Minor background noise)</option>
+                                        <option value="3">3 – Mixed language or inconsistent quality</option>
+                                        <option value="2">2 – Poor quality (Noisy, unclear)</option>
+                                        <option value="1">1 – Unusable (Severely degraded, or non-Bangla)</option>
                                     </select>
                                 </div>
                             </div>
