@@ -476,171 +476,165 @@ class AudioFileBrowser {
         this.highlightDifferences();
     }
     
-    highlightDifferences() {
-        const referenceText = this.referenceContent.textContent || '';
-        const modelText = this.modelTranscriptText || '';
+    // Unicode-aware utilities
+    canonMap(text) {
+        // Minimal canonical map for Bengali
+        const BENGALI_CANON_MAP = new Map([
+            ['য়', 'য'],
+            ['্‌', '্']
+        ]);
+        return text.split('').map(ch => BENGALI_CANON_MAP.get(ch) ?? ch).join('');
+    }
+    
+    normalizeForComparison(text) {
+        const ZW = /[\u200B-\u200D\uFEFF]/g; // Zero-width characters
+        return this.canonMap(
+            text.normalize('NFC')
+                .replace(ZW, '')
+                .replace(/[\p{P}\p{S}]+/gu, '') // Remove punctuation & symbols
+                .replace(/\s+/g, ' ')
+                .trim()
+        );
+    }
+    
+    tokenizeWordsPreserveWhitespace(text) {
+        // Use Intl.Segmenter for proper Bengali word segmentation
+        if (typeof Intl.Segmenter !== 'undefined') {
+            const seg = new Intl.Segmenter('bn', { granularity: 'word' });
+            const tokens = [];
+            for (const { segment } of seg.segment(text.normalize('NFC'))) {
+                tokens.push(segment);
+            }
+            return tokens;
+        } else {
+            // Fallback for browsers without Intl.Segmenter
+            return text.normalize('NFC').match(/\S+|\s+/g) || [];
+        }
+    }
+    
+    graphemes(text) {
+        // Grapheme segmentation for character-level diffs
+        if (typeof Intl.Segmenter !== 'undefined') {
+            const seg = new Intl.Segmenter('bn', { granularity: 'grapheme' });
+            return Array.from(seg.segment(text), s => s.segment);
+        } else {
+            return text.split('');
+        }
+    }
+    
+    lcsDiff(a, b, areEq) {
+        const n = a.length, m = b.length;
+        const dp = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0));
         
-        if (!referenceText || !modelText || referenceText === 'Select an audio file to view the reference transcript') {
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) {
+                dp[i][j] = areEq(a[i], b[j]) 
+                    ? 1 + dp[i + 1][j + 1]
+                    : Math.max(dp[i + 1][j], dp[i][j + 1]);
+            }
+        }
+        
+        const result = [];
+        let i = 0, j = 0;
+        while (i < n && j < m) {
+            if (areEq(a[i], b[j])) {
+                result.push({ type: 'equal', a: a[i], b: b[j] });
+                i++; j++;
+            } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+                result.push({ type: 'delete', a: a[i] }); 
+                i++;
+            } else {
+                result.push({ type: 'insert', b: b[j] }); 
+                j++;
+            }
+        }
+        while (i < n) result.push({ type: 'delete', a: a[i++] });
+        while (j < m) result.push({ type: 'insert', b: b[j++] });
+        
+        // Merge adjacent delete+insert pairs into replace
+        const merged = [];
+        for (let k = 0; k < result.length; k++) {
+            const cur = result[k], next = result[k + 1];
+            if (cur?.type === 'delete' && next?.type === 'insert') {
+                merged.push({ type: 'replace', a: cur.a, b: next.b });
+                k++;
+            } else {
+                merged.push(cur);
+            }
+        }
+        return merged;
+    }
+    
+    innerReplaceMarkup(aText, bText) {
+        const A = this.graphemes(aText);
+        const B = this.graphemes(bText);
+        const eq = (x, y) => this.normalizeForComparison(x) === this.normalizeForComparison(y);
+        const ops = this.lcsDiff(A, B, eq);
+        
+        let out = '';
+        for (const op of ops) {
+            if (op.type === 'equal') {
+                out += this.escapeHtml(op.b ?? op.a);
+            } else if (op.type === 'insert') {
+                out += `<span class="diff-ins-ch">${this.escapeHtml(op.b)}</span>`;
+            } else if (op.type === 'delete') {
+                // Hidden in model view
+            } else if (op.type === 'replace') {
+                out += `<span class="diff-rep-ch">${this.escapeHtml(op.b)}</span>`;
+            }
+        }
+        return out;
+    }
+    
+    highlightDifferences() {
+        const referenceText = (this.referenceContent.textContent || '').trim();
+        const modelText = (this.modelTranscriptText || '').trim();
+        
+        if (!referenceText || !modelText || 
+            referenceText === 'Select an audio file to view the reference transcript') {
             this.transcriptContent.textContent = modelText;
             return;
         }
         
-        // Normalize for comparison (remove all punctuation)
-        const normalizeForComparison = (text) => {
-            // Remove all punctuation marks (including Bengali punctuation)
-            return text.replace(/[।,;:!?'""`''""\-–—.()[\]{}]/g, '').replace(/\s+/g, ' ').trim();
+        const refTokens = this.tokenizeWordsPreserveWhitespace(referenceText);
+        const modelTokens = this.tokenizeWordsPreserveWhitespace(modelText);
+        
+        const isSpace = t => /^\s+$/u.test(t);
+        const areEq = (x, y) => {
+            if (isSpace(x) && isSpace(y)) return true;
+            if (isSpace(x) || isSpace(y)) return false;
+            return this.normalizeForComparison(x) === this.normalizeForComparison(y);
         };
         
-        // Simple word-level diff
-        const refWords = this.tokenize(referenceText);
-        const modelWords = this.tokenize(modelText);
+        const ops = this.lcsDiff(refTokens, modelTokens, areEq);
         
-        // Use a simple diff algorithm
-        const diff = this.computeDiff(refWords, modelWords, normalizeForComparison);
-        
-        // Build HTML with highlights
         let html = '';
-        diff.forEach(item => {
-            if (item.type === 'equal') {
-                html += this.escapeHtml(item.value);
-            } else if (item.type === 'insert') {
-                html += `<span class="diff-insert" title="Added in model">${this.escapeHtml(item.value)}</span>`;
-            } else if (item.type === 'delete') {
-                // Show deletions as strikethrough in reference
-                // (we'll handle this in reference display)
-            } else if (item.type === 'replace') {
-                html += `<span class="diff-replace" title="Different from reference">${this.escapeHtml(item.value)}</span>`;
-            }
-        });
-        
-        this.transcriptContent.innerHTML = html || modelText;
-    }
-    
-    tokenize(text) {
-        // Split into words, handling Bengali text properly
-        // Separate punctuation from words for better comparison
-        const tokens = [];
-        let current = '';
-        
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            
-            // Check if it's whitespace
-            if (/\s/.test(char)) {
-                if (current) {
-                    tokens.push(current);
-                    current = '';
-                }
-                tokens.push(char);
-            }
-            // Check if it's punctuation
-            else if (/[।,;:!?'""`''""\-–—.()[\]{}]/.test(char)) {
-                if (current) {
-                    tokens.push(current);
-                    current = '';
-                }
-                // Don't add punctuation as separate tokens - we'll ignore them
-            }
-            // Regular character
-            else {
-                current += char;
+        for (const op of ops) {
+            if (op.type === 'equal') {
+                const token = op.b ?? op.a;
+                html += this.escapeHtml(token);
+            } else if (op.type === 'insert') {
+                html += isSpace(op.b)
+                    ? this.escapeHtml(op.b)
+                    : `<span class="diff-insert" title="Added in model">${this.escapeHtml(op.b)}</span>`;
+            } else if (op.type === 'delete') {
+                // Skip in model view
+            } else if (op.type === 'replace') {
+                html += `<span class="diff-replace" title="Different from reference">${this.innerReplaceMarkup(op.a, op.b)}</span>`;
             }
         }
         
-        if (current) {
-            tokens.push(current);
-        }
-        
-        return tokens;
+        this.transcriptContent.innerHTML = html || this.escapeHtml(modelText);
     }
     
-    computeDiff(arr1, arr2, normalizeFunc) {
-        // Improved diff algorithm with normalization
-        const result = [];
-        let i = 0, j = 0;
-        
-        // Helper to check if two tokens are equivalent (ignoring punctuation like hyphens)
-        const areEquivalent = (token1, token2) => {
-            if (token1 === token2) return true;
-            if (!normalizeFunc) return false;
-            return normalizeFunc(token1) === normalizeFunc(token2);
-        };
-        
-        while (i < arr1.length || j < arr2.length) {
-            // Skip whitespace matching
-            if (i < arr1.length && j < arr2.length && /^\s+$/.test(arr1[i]) && /^\s+$/.test(arr2[j])) {
-                result.push({ type: 'equal', value: arr2[j] });
-                i++;
-                j++;
-                continue;
-            }
-            
-            if (i >= arr1.length) {
-                // Rest are insertions
-                if (!/^\s+$/.test(arr2[j])) {
-                    result.push({ type: 'insert', value: arr2[j] });
-                } else {
-                    result.push({ type: 'equal', value: arr2[j] });
-                }
-                j++;
-            } else if (j >= arr2.length) {
-                // Rest are deletions (skip in model view)
-                i++;
-            } else if (areEquivalent(arr1[i], arr2[j])) {
-                // Match (exact or normalized)
-                result.push({ type: 'equal', value: arr2[j] });
-                i++;
-                j++;
-            } else if (/^\s+$/.test(arr1[i])) {
-                // Reference has space, model doesn't - skip reference space
-                i++;
-            } else if (/^\s+$/.test(arr2[j])) {
-                // Model has space, reference doesn't - keep model space
-                result.push({ type: 'equal', value: arr2[j] });
-                j++;
-            } else {
-                // Different non-whitespace tokens
-                // Look ahead to see if this is insertion, deletion, or replacement
-                let foundMatch = false;
-                
-                // Check next few tokens for a match
-                for (let k = 1; k <= 3 && j + k < arr2.length; k++) {
-                    if (areEquivalent(arr1[i], arr2[j + k])) {
-                        // Found match ahead in model - current is insertion
-                        result.push({ type: 'insert', value: arr2[j] });
-                        j++;
-                        foundMatch = true;
-                        break;
-                    }
-                }
-                
-                if (!foundMatch) {
-                    for (let k = 1; k <= 3 && i + k < arr1.length; k++) {
-                        if (areEquivalent(arr1[i + k], arr2[j])) {
-                            // Found match ahead in reference - current is deletion
-                            i++;
-                            foundMatch = true;
-                            break;
-                        }
-                    }
-                }
-                
-                if (!foundMatch) {
-                    // No match found nearby - it's a replacement
-                    result.push({ type: 'replace', value: arr2[j] });
-                    i++;
-                    j++;
-                }
-            }
-        }
-        
-        return result;
-    }
-    
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    escapeHtml(s) {
+        return s.replace(/[&<>"']/g, c => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[c]));
     }
     
     displayMetadata(reference) {

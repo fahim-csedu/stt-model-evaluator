@@ -297,32 +297,32 @@ main {
     border-top: 3px solid #667eea;
 }
 
-/* Diff highlighting */
+/* Diff highlighting - word level */
 .diff-insert {
-    background-color: #c3f0c3;
-    color: #155724;
+    background: #e6ffed;
+    box-shadow: inset 0 -2px 0 #34d058;
     padding: 2px 4px;
     border-radius: 3px;
-    font-weight: 500;
 }
 
 .diff-replace {
-    background-color: #fff3cd;
-    color: #856404;
+    background: #fff5f5;
+    box-shadow: inset 0 -2px 0 #e55353;
     padding: 2px 4px;
     border-radius: 3px;
-    font-weight: 500;
-    text-decoration: underline;
-    text-decoration-style: wavy;
-    text-decoration-color: #ffc107;
 }
 
-.diff-delete {
-    background-color: #f8d7da;
-    color: #721c24;
-    padding: 2px 4px;
-    border-radius: 3px;
-    text-decoration: line-through;
+/* Diff highlighting - character level (inside replaced words) */
+.diff-ins-ch {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-decoration-color: #34d058;
+}
+
+.diff-rep-ch {
+    background: rgba(229, 83, 83, 0.25);
+    border-radius: 2px;
+    padding: 0 1px;
 }
 
 .transcript-content span[title] {
