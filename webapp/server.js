@@ -453,8 +453,27 @@ app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// Verify directories exist on startup
+if (!fs.existsSync(AUDIO_BASE_DIR)) {
+    console.error(`ERROR: AUDIO_BASE_DIR does not exist: ${AUDIO_BASE_DIR}`);
+    console.error('Please check your config.local.js file');
+    process.exit(1);
+}
+
 app.listen(PORT, () => {
     console.log(`STT Model Evaluator running at http://localhost:${PORT}`);
     console.log(`Audio files from: ${AUDIO_BASE_DIR}`);
     console.log(`Transcriptions from: ${TRANSCRIPTION_DIR}`);
+    console.log(`Absolute path: ${path.resolve(AUDIO_BASE_DIR)}`);
+    
+    // List files in directory to verify
+    try {
+        const files = fs.readdirSync(AUDIO_BASE_DIR);
+        console.log(`Found ${files.length} items in audio directory`);
+        if (DEBUG) {
+            console.log('First few items:', files.slice(0, 5));
+        }
+    } catch (error) {
+        console.error('Error reading audio directory:', error.message);
+    }
 });
