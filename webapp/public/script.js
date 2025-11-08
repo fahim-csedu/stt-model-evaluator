@@ -17,6 +17,9 @@ class AudioFileBrowser {
         this.sessionId = localStorage.getItem('audioFileBrowserSession');
         this.username = localStorage.getItem('audioFileBrowserUsername');
         
+        // Clear any saved paths from previous sessions
+        localStorage.removeItem('audioFileBrowserLastPath');
+        
         if (!this.sessionId) {
             window.location.href = '/login.html';
             return;
@@ -25,8 +28,8 @@ class AudioFileBrowser {
         this.initializeElements();
         this.bindEvents();
         
-        const savedPath = localStorage.getItem('audioFileBrowserLastPath') || '';
-        this.loadDirectory(savedPath);
+        // Always start at root directory
+        this.loadDirectory('');
         
         this.updateUserInfo();
     }
@@ -225,8 +228,6 @@ class AudioFileBrowser {
             this.currentPath = data.currentPath;
             this.updateUI(data);
             this.renderFileList(data.items);
-            
-            localStorage.setItem('audioFileBrowserLastPath', this.currentPath);
             
         } catch (error) {
             console.error('LoadDirectory error:', error);
