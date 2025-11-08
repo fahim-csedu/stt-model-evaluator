@@ -518,19 +518,31 @@ class AudioFileBrowser {
     
     tokenize(text) {
         // Split into words, handling Bengali text properly
-        // Match sequences of non-whitespace characters or whitespace
+        // Separate punctuation from words for better comparison
         const tokens = [];
         let current = '';
         
         for (let i = 0; i < text.length; i++) {
             const char = text[i];
+            
+            // Check if it's whitespace
             if (/\s/.test(char)) {
                 if (current) {
                     tokens.push(current);
                     current = '';
                 }
                 tokens.push(char);
-            } else {
+            }
+            // Check if it's punctuation
+            else if (/[।,;:!?'""`''""\-–—.()[\]{}]/.test(char)) {
+                if (current) {
+                    tokens.push(current);
+                    current = '';
+                }
+                // Don't add punctuation as separate tokens - we'll ignore them
+            }
+            // Regular character
+            else {
                 current += char;
             }
         }
