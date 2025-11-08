@@ -27,7 +27,7 @@ except ImportError:
     AUDIO_BASE_DIR = r"D:\cv_eval_bn\validated"
     CSV_OUTPUT_PATH = r"D:\cv_eval_bn\transcription_path.csv"
     SOCKET_URL = "https://voice.bangla.gov.bd:9394"
-    AUDIO_EXTENSIONS = ['.mp3', '.wav', '.flac', '.m4a', '.ogg']
+    AUDIO_EXTENSIONS = ['.wav', '.flac']  # WAV works best, MP3 may have issues
     API_TIMEOUT = 120
     REQUEST_DELAY = 1
 

@@ -7,6 +7,8 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+**IMPORTANT**: This API works best with **WAV files**. If you have MP3 files, convert them first using ffmpeg (see SOLUTION.md).
+
 ## Step 1: Test API Latency (IMPORTANT!)
 
 Before processing thousands of files, test with a single MP3:
