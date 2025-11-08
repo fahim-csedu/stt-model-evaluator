@@ -107,7 +107,10 @@ const DEMO_ACCOUNTS = {
     'sta': 'Qw5!yH8fK9pL',
     'mrk': 'Cx2%eR6gJ7nM',
     'fa': 'Fs4^iO1tY3vB',
-    'demo': 'Nz8&aU5hW2qS'
+    'demo': 'Nz8&aU5hW2qS',
+    'nusrat': 'Np8@xK4mT9wQ',
+    'mashruf': 'Mh5#vL2nR6yB',
+    'khairul': 'Kj9$pW3cF7sD'
 };
 
 // Session storage

@@ -413,7 +413,7 @@ main {
 }
 
 .form-group label {
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 600;
     margin-bottom: 5px;
     color: #333;
@@ -429,10 +429,10 @@ main {
 .form-group input,
 .form-group select,
 .form-group textarea {
-    padding: 10px 12px;
+    padding: 12px 14px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    font-size: 16px;
+    font-size: 20px;
     font-family: inherit;
 }
 
@@ -460,7 +460,7 @@ main {
     align-items: center;
     cursor: pointer;
     font-weight: normal;
-    font-size: 16px;
+    font-size: 18px;
 }
 
 .radio-label input[type="radio"] {
@@ -481,7 +481,7 @@ main {
     align-items: center;
     cursor: pointer;
     font-weight: normal;
-    font-size: 16px;
+    font-size: 18px;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -513,7 +513,7 @@ main {
 
 .form-section h4 {
     margin: 0 0 15px 0;
-    font-size: 17px;
+    font-size: 20px;
     color: #667eea;
     font-weight: 600;
 }

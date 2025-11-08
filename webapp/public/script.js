@@ -485,9 +485,10 @@ class AudioFileBrowser {
             return;
         }
         
-        // Normalize for comparison (remove punctuation differences)
+        // Normalize for comparison (remove all punctuation)
         const normalizeForComparison = (text) => {
-            return text.replace(/[-–—]/g, ' ').replace(/\s+/g, ' ');
+            // Remove all punctuation marks (including Bengali punctuation)
+            return text.replace(/[।,;:!?'""`''""\-–—.()[\]{}]/g, '').replace(/\s+/g, ' ').trim();
         };
         
         // Simple word-level diff
@@ -541,10 +542,17 @@ class AudioFileBrowser {
         return tokens;
     }
     
-    computeDiff(arr1, arr2) {
-        // Improved diff algorithm
+    computeDiff(arr1, arr2, normalizeFunc) {
+        // Improved diff algorithm with normalization
         const result = [];
         let i = 0, j = 0;
+        
+        // Helper to check if two tokens are equivalent (ignoring punctuation like hyphens)
+        const areEquivalent = (token1, token2) => {
+            if (token1 === token2) return true;
+            if (!normalizeFunc) return false;
+            return normalizeFunc(token1) === normalizeFunc(token2);
+        };
         
         while (i < arr1.length || j < arr2.length) {
             // Skip whitespace matching
@@ -564,10 +572,10 @@ class AudioFileBrowser {
                 }
                 j++;
             } else if (j >= arr2.length) {
-                // Rest are deletions (skip in model view, but count them)
+                // Rest are deletions (skip in model view)
                 i++;
-            } else if (arr1[i] === arr2[j]) {
-                // Exact match
+            } else if (areEquivalent(arr1[i], arr2[j])) {
+                // Match (exact or normalized)
                 result.push({ type: 'equal', value: arr2[j] });
                 i++;
                 j++;
@@ -585,7 +593,7 @@ class AudioFileBrowser {
                 
                 // Check next few tokens for a match
                 for (let k = 1; k <= 3 && j + k < arr2.length; k++) {
-                    if (arr1[i] === arr2[j + k]) {
+                    if (areEquivalent(arr1[i], arr2[j + k])) {
                         // Found match ahead in model - current is insertion
                         result.push({ type: 'insert', value: arr2[j] });
                         j++;
@@ -596,7 +604,7 @@ class AudioFileBrowser {
                 
                 if (!foundMatch) {
                     for (let k = 1; k <= 3 && i + k < arr1.length; k++) {
-                        if (arr1[i + k] === arr2[j]) {
+                        if (areEquivalent(arr1[i + k], arr2[j])) {
                             // Found match ahead in reference - current is deletion
                             i++;
                             foundMatch = true;
