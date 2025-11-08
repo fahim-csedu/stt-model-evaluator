@@ -62,6 +62,11 @@ class AudioFileBrowser {
         this.copyReferenceBtn.addEventListener('click', () => this.copyToClipboard('reference'));
         this.copyAPIBtn.addEventListener('click', () => this.copyToClipboard('api'));
         
+        // Add listeners to transcript correctness radio buttons to enable/disable ideal transcript
+        document.querySelectorAll('input[name="refCorrect"], input[name="modelCorrect"]').forEach(radio => {
+            radio.addEventListener('change', () => this.updateIdealTranscriptState());
+        });
+        
         document.addEventListener('keydown', (e) => {
             const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
             
@@ -93,6 +98,22 @@ class AudioFileBrowser {
         }
     }
     
+    updateIdealTranscriptState() {
+        const refCorrectYes = document.getElementById('annRefCorrectYes').checked;
+        const modelCorrectYes = document.getElementById('annModelCorrectYes').checked;
+        const idealTranscript = document.getElementById('annIdealTranscript');
+        
+        // Disable if either is correct
+        if (refCorrectYes || modelCorrectYes) {
+            idealTranscript.disabled = true;
+            idealTranscript.value = '';
+            idealTranscript.placeholder = 'Not needed (at least one transcript is correct)';
+        } else {
+            idealTranscript.disabled = false;
+            idealTranscript.placeholder = 'Enter the correct transcript...';
+        }
+    }
+    
     async copyAndSave() {
         try {
             // Collect background noise checkboxes
@@ -110,16 +131,17 @@ class AudioFileBrowser {
                 return;
             }
             
-            // Prepare data for both copy and save
-            const refCorrect = document.getElementById('annRefCorrect').checked ? 'yes' : 'no';
-            const modelCorrect = document.getElementById('annModelCorrect').checked ? 'yes' : 'no';
+            // Get radio button values
+            const refCorrect = document.querySelector('input[name="refCorrect"]:checked')?.value || '';
+            const modelCorrect = document.querySelector('input[name="modelCorrect"]:checked')?.value || '';
+            const properNoun = document.querySelector('input[name="properNoun"]:checked')?.value || '';
+            const accentVariation = document.querySelector('input[name="accentVariation"]:checked')?.value || '';
+            const numericDate = document.querySelector('input[name="numericDate"]:checked')?.value || '';
+            const homophone = document.querySelector('input[name="homophone"]:checked')?.value || '';
+            const foreignLanguage = document.querySelector('input[name="foreignLanguage"]:checked')?.value || '';
+            const gender = document.querySelector('input[name="gender"]:checked')?.value || '';
+            
             const idealTranscript = document.getElementById('annIdealTranscript').value || '';
-            const properNoun = document.getElementById('annProperNoun').checked ? 'yes' : 'no';
-            const accentVariation = document.getElementById('annAccentVariation').checked ? 'yes' : 'no';
-            const numericDate = document.getElementById('annNumericDate').checked ? 'yes' : 'no';
-            const homophone = document.getElementById('annHomophone').checked ? 'yes' : 'no';
-            const foreignLanguage = document.getElementById('annForeignLanguage').checked ? 'yes' : 'no';
-            const gender = document.getElementById('annGender').value || '';
             const backgroundNoise = noises.length > 0 ? noises.join(', ') : 'None';
             const audioQuality = document.getElementById('annAudioQuality').value || '';
             const notes = document.getElementById('annNotes').value || '';
@@ -444,7 +466,98 @@ class AudioFileBrowser {
             text = JSON.stringify(transcript, null, 2);
         }
         
-        this.transcriptContent.textContent = text;
+        // Store the plain text for comparison
+        this.modelTranscriptText = text;
+        
+        // Highlight differences if we have both transcripts
+        this.highlightDifferences();
+    }
+    
+    highlightDifferences() {
+        const referenceText = this.referenceContent.textContent || '';
+        const modelText = this.modelTranscriptText || '';
+        
+        if (!referenceText || !modelText || referenceText === 'Select an audio file to view the reference transcript') {
+            this.transcriptContent.textContent = modelText;
+            return;
+        }
+        
+        // Simple word-level diff
+        const refWords = this.tokenize(referenceText);
+        const modelWords = this.tokenize(modelText);
+        
+        // Use a simple diff algorithm
+        const diff = this.computeDiff(refWords, modelWords);
+        
+        // Build HTML with highlights
+        let html = '';
+        diff.forEach(item => {
+            if (item.type === 'equal') {
+                html += this.escapeHtml(item.value);
+            } else if (item.type === 'insert') {
+                html += `<span class="diff-insert" title="Added in model">${this.escapeHtml(item.value)}</span>`;
+            } else if (item.type === 'delete') {
+                // Show deletions as strikethrough in reference
+                // (we'll handle this in reference display)
+            } else if (item.type === 'replace') {
+                html += `<span class="diff-replace" title="Different from reference">${this.escapeHtml(item.value)}</span>`;
+            }
+        });
+        
+        this.transcriptContent.innerHTML = html || modelText;
+    }
+    
+    tokenize(text) {
+        // Split into words while preserving spaces and punctuation
+        return text.match(/\S+|\s+/g) || [];
+    }
+    
+    computeDiff(arr1, arr2) {
+        // Simple diff algorithm (similar to Myers diff)
+        const result = [];
+        let i = 0, j = 0;
+        
+        while (i < arr1.length || j < arr2.length) {
+            if (i >= arr1.length) {
+                // Rest are insertions
+                result.push({ type: 'insert', value: arr2[j] });
+                j++;
+            } else if (j >= arr2.length) {
+                // Rest are deletions (skip in model view)
+                i++;
+            } else if (arr1[i] === arr2[j]) {
+                // Equal
+                result.push({ type: 'equal', value: arr2[j] });
+                i++;
+                j++;
+            } else {
+                // Try to find if it's a replacement or insertion/deletion
+                const nextMatchInRef = arr1.indexOf(arr2[j], i + 1);
+                const nextMatchInModel = arr2.indexOf(arr1[i], j + 1);
+                
+                if (nextMatchInRef !== -1 && (nextMatchInModel === -1 || nextMatchInRef < nextMatchInModel)) {
+                    // Deletion in model (skip)
+                    i++;
+                } else if (nextMatchInModel !== -1) {
+                    // Insertion in model
+                    result.push({ type: 'insert', value: arr2[j] });
+                    j++;
+                } else {
+                    // Replacement
+                    result.push({ type: 'replace', value: arr2[j] });
+                    i++;
+                    j++;
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     displayMetadata(reference) {
@@ -495,24 +608,21 @@ class AudioFileBrowser {
         
         // Pre-fill gender from CSV
         const gender = reference?.gender || '';
-        const genderSelect = document.getElementById('annGender');
         if (gender.toLowerCase().includes('male') && !gender.toLowerCase().includes('female')) {
-            genderSelect.value = 'M';
+            document.getElementById('annGenderM').checked = true;
         } else if (gender.toLowerCase().includes('female')) {
-            genderSelect.value = 'F';
+            document.getElementById('annGenderF').checked = true;
         } else {
-            genderSelect.value = 'Unknown';
+            document.getElementById('annGenderUnknown').checked = true;
         }
     }
     
     clearAnnotationForm() {
+        // Clear radio buttons
+        document.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
+        
         // Clear checkboxes
-        const checkboxes = [
-            'annRefCorrect', 'annModelCorrect', 'annProperNoun', 
-            'annAccentVariation', 'annNumericDate', 'annHomophone', 
-            'annForeignLanguage', 'annNoiseMusic', 'annNoiseCrowd',
-            'annNoiseTraffic', 'annNoiseEcho'
-        ];
+        const checkboxes = ['annNoiseMusic', 'annNoiseCrowd', 'annNoiseTraffic', 'annNoiseEcho'];
         checkboxes.forEach(id => {
             const element = document.getElementById(id);
             if (element) element.checked = false;
@@ -520,22 +630,39 @@ class AudioFileBrowser {
         
         // Clear text fields
         document.getElementById('annIdealTranscript').value = '';
+        document.getElementById('annIdealTranscript').disabled = false;
         document.getElementById('annNotes').value = '';
         
-        // Clear selects
-        document.getElementById('annGender').value = '';
+        // Clear select
         document.getElementById('annAudioQuality').value = '';
     }
     
     loadAnnotation(annotation) {
-        // Load checkboxes
-        document.getElementById('annRefCorrect').checked = annotation.refCorrect === 'yes' || annotation.refCorrect === true;
-        document.getElementById('annModelCorrect').checked = annotation.modelCorrect === 'yes' || annotation.modelCorrect === true;
-        document.getElementById('annProperNoun').checked = annotation.properNoun === 'yes' || annotation.properNoun === true;
-        document.getElementById('annAccentVariation').checked = annotation.accentVariation === 'yes' || annotation.accentVariation === true;
-        document.getElementById('annNumericDate').checked = annotation.numericDate === 'yes' || annotation.numericDate === true;
-        document.getElementById('annHomophone').checked = annotation.homophone === 'yes' || annotation.homophone === true;
-        document.getElementById('annForeignLanguage').checked = annotation.foreignLanguage === 'yes' || annotation.foreignLanguage === true;
+        // Load radio buttons
+        if (annotation.refCorrect === 'yes') document.getElementById('annRefCorrectYes').checked = true;
+        else if (annotation.refCorrect === 'no') document.getElementById('annRefCorrectNo').checked = true;
+        
+        if (annotation.modelCorrect === 'yes') document.getElementById('annModelCorrectYes').checked = true;
+        else if (annotation.modelCorrect === 'no') document.getElementById('annModelCorrectNo').checked = true;
+        
+        if (annotation.properNoun === 'yes') document.getElementById('annProperNounYes').checked = true;
+        else if (annotation.properNoun === 'no') document.getElementById('annProperNounNo').checked = true;
+        
+        if (annotation.accentVariation === 'yes') document.getElementById('annAccentVariationYes').checked = true;
+        else if (annotation.accentVariation === 'no') document.getElementById('annAccentVariationNo').checked = true;
+        
+        if (annotation.numericDate === 'yes') document.getElementById('annNumericDateYes').checked = true;
+        else if (annotation.numericDate === 'no') document.getElementById('annNumericDateNo').checked = true;
+        
+        if (annotation.homophone === 'yes') document.getElementById('annHomophoneYes').checked = true;
+        else if (annotation.homophone === 'no') document.getElementById('annHomophoneNo').checked = true;
+        
+        if (annotation.foreignLanguage === 'yes') document.getElementById('annForeignLanguageYes').checked = true;
+        else if (annotation.foreignLanguage === 'no') document.getElementById('annForeignLanguageNo').checked = true;
+        
+        if (annotation.gender === 'M') document.getElementById('annGenderM').checked = true;
+        else if (annotation.gender === 'F') document.getElementById('annGenderF').checked = true;
+        else if (annotation.gender === 'Unknown') document.getElementById('annGenderUnknown').checked = true;
         
         // Load background noise checkboxes
         const noises = (annotation.backgroundNoise || '').split(',').map(n => n.trim());
@@ -548,9 +675,11 @@ class AudioFileBrowser {
         document.getElementById('annIdealTranscript').value = annotation.idealTranscript || '';
         document.getElementById('annNotes').value = annotation.notes || '';
         
-        // Load selects
-        document.getElementById('annGender').value = annotation.gender || '';
+        // Load select
         document.getElementById('annAudioQuality').value = annotation.audioQuality || '';
+        
+        // Update ideal transcript state
+        this.updateIdealTranscriptState();
         
         this.annotationStatus.textContent = `Last saved: ${new Date(annotation.timestamp).toLocaleString()}`;
         this.annotationStatus.className = 'annotation-status';

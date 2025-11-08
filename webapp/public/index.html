@@ -79,6 +79,7 @@
                         </div>
                         
                         <div class="annotation-form">
+                            <!-- Basic Info -->
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Filename</label>
@@ -90,103 +91,161 @@
                                 </div>
                             </div>
                             
-                            <div class="form-row">
-                                <div class="form-group checkbox-group">
-                                    <label>
-                                        <input type="checkbox" id="annRefCorrect">
-                                        Reference Transcript Correct
-                                    </label>
-                                </div>
-                                <div class="form-group checkbox-group">
-                                    <label>
-                                        <input type="checkbox" id="annModelCorrect">
-                                        Model Transcript Correct
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>Ideal Transcript <span class="hint">(Only fill if both are incorrect)</span></label>
-                                <textarea id="annIdealTranscript" rows="3" placeholder="Enter the correct transcript..."></textarea>
-                            </div>
-                            
+                            <!-- Transcript Correctness -->
                             <div class="form-section">
-                                <h4>Error Categories (Check if present)</h4>
-                                <div class="checkbox-grid">
-                                    <div class="form-group checkbox-group">
-                                        <label>
-                                            <input type="checkbox" id="annProperNoun">
-                                            Proper Noun Recognition Error
+                                <h4>Transcript Evaluation</h4>
+                                
+                                <div class="form-group">
+                                    <label>Reference Transcript Correct?</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="refCorrect" value="yes" id="annRefCorrectYes">
+                                            Yes
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="refCorrect" value="no" id="annRefCorrectNo">
+                                            No
                                         </label>
                                     </div>
-                                    <div class="form-group checkbox-group">
-                                        <label>
-                                            <input type="checkbox" id="annAccentVariation">
-                                            Accent Variation Issue
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Model Transcript Correct?</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="modelCorrect" value="yes" id="annModelCorrectYes">
+                                            Yes
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="modelCorrect" value="no" id="annModelCorrectNo">
+                                            No
                                         </label>
                                     </div>
-                                    <div class="form-group checkbox-group">
-                                        <label>
-                                            <input type="checkbox" id="annNumericDate">
-                                            Numeric/Date Recognition Error
-                                        </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Ideal Transcript <span class="hint">(Only if both are incorrect)</span></label>
+                                    <textarea id="annIdealTranscript" rows="2" placeholder="Enter the correct transcript..."></textarea>
+                                </div>
+                            </div>
+                            
+                            <!-- Error Categories -->
+                            <div class="form-section">
+                                <h4>Error Categories</h4>
+                                <div class="error-categories">
+                                    <div class="form-group">
+                                        <label>Proper Noun Recognition Error?</label>
+                                        <div class="radio-group">
+                                            <label class="radio-label">
+                                                <input type="radio" name="properNoun" value="yes" id="annProperNounYes">
+                                                Yes
+                                            </label>
+                                            <label class="radio-label">
+                                                <input type="radio" name="properNoun" value="no" id="annProperNounNo">
+                                                No
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div class="form-group checkbox-group">
-                                        <label>
-                                            <input type="checkbox" id="annHomophone">
-                                            Homophone Confusion
-                                        </label>
+                                    
+                                    <div class="form-group">
+                                        <label>Accent Variation Issue?</label>
+                                        <div class="radio-group">
+                                            <label class="radio-label">
+                                                <input type="radio" name="accentVariation" value="yes" id="annAccentVariationYes">
+                                                Yes
+                                            </label>
+                                            <label class="radio-label">
+                                                <input type="radio" name="accentVariation" value="no" id="annAccentVariationNo">
+                                                No
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div class="form-group checkbox-group">
-                                        <label>
-                                            <input type="checkbox" id="annForeignLanguage">
-                                            Contains >10% Foreign Language
-                                        </label>
+                                    
+                                    <div class="form-group">
+                                        <label>Numeric/Date Recognition Error?</label>
+                                        <div class="radio-group">
+                                            <label class="radio-label">
+                                                <input type="radio" name="numericDate" value="yes" id="annNumericDateYes">
+                                                Yes
+                                            </label>
+                                            <label class="radio-label">
+                                                <input type="radio" name="numericDate" value="no" id="annNumericDateNo">
+                                                No
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Homophone Confusion?</label>
+                                        <div class="radio-group">
+                                            <label class="radio-label">
+                                                <input type="radio" name="homophone" value="yes" id="annHomophoneYes">
+                                                Yes
+                                            </label>
+                                            <label class="radio-label">
+                                                <input type="radio" name="homophone" value="no" id="annHomophoneNo">
+                                                No
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label>Contains >10% Foreign Language?</label>
+                                        <div class="radio-group">
+                                            <label class="radio-label">
+                                                <input type="radio" name="foreignLanguage" value="yes" id="annForeignLanguageYes">
+                                                Yes
+                                            </label>
+                                            <label class="radio-label">
+                                                <input type="radio" name="foreignLanguage" value="no" id="annForeignLanguageNo">
+                                                No
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             
+                            <!-- Audio Quality -->
                             <div class="form-section">
                                 <h4>Audio Quality</h4>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Speaker Gender</label>
-                                        <select id="annGender">
-                                            <option value="">Select...</option>
-                                            <option value="M">Male</option>
-                                            <option value="F">Female</option>
-                                            <option value="Unknown">Unknown</option>
-                                        </select>
+                                
+                                <div class="form-group">
+                                    <label>Speaker Gender</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="gender" value="M" id="annGenderM">
+                                            Male
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="gender" value="F" id="annGenderF">
+                                            Female
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="gender" value="Unknown" id="annGenderUnknown">
+                                            Unknown
+                                        </label>
                                     </div>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label>Background Noise (Check all that apply)</label>
-                                    <div class="checkbox-grid">
-                                        <div class="form-group checkbox-group">
-                                            <label>
-                                                <input type="checkbox" id="annNoiseMusic">
-                                                Music
-                                            </label>
-                                        </div>
-                                        <div class="form-group checkbox-group">
-                                            <label>
-                                                <input type="checkbox" id="annNoiseCrowd">
-                                                Crowd
-                                            </label>
-                                        </div>
-                                        <div class="form-group checkbox-group">
-                                            <label>
-                                                <input type="checkbox" id="annNoiseTraffic">
-                                                Traffic
-                                            </label>
-                                        </div>
-                                        <div class="form-group checkbox-group">
-                                            <label>
-                                                <input type="checkbox" id="annNoiseEcho">
-                                                Echo
-                                            </label>
-                                        </div>
+                                    <div class="checkbox-inline">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="annNoiseMusic">
+                                            Music
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="annNoiseCrowd">
+                                            Crowd
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="annNoiseTraffic">
+                                            Traffic
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="annNoiseEcho">
+                                            Echo
+                                        </label>
                                     </div>
                                 </div>
                                 
@@ -203,9 +262,10 @@
                                 </div>
                             </div>
                             
+                            <!-- Notes -->
                             <div class="form-group">
                                 <label>Notes</label>
-                                <textarea id="annNotes" rows="4" placeholder="Additional observations..."></textarea>
+                                <textarea id="annNotes" rows="3" placeholder="Additional observations..."></textarea>
                             </div>
                         </div>
                     </div>
