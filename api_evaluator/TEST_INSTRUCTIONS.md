@@ -81,6 +81,7 @@ python batch_transcribe_v2.py
 5. Updates `D:\cv_eval_bn\transcription_path.csv` with:
    - Audio file path
    - Transcription file path
+   - Transcript text (concatenated from predicted words)
    - Audio length (seconds)
    - API response time (seconds)
 

@@ -12,7 +12,7 @@ from datetime import datetime
 
 # Configuration
 SOCKET_URL = "https://voice.bangla.gov.bd:9394"
-TEST_AUDIO_FILE = "sample.mp3"  # Place a sample MP3 file in this directory
+TEST_AUDIO_FILE = "./common_voice_bn_30704510.mp3"  # Place a sample MP3 file in this directory
 
 
 def get_audio_duration_mp3(audio_path):

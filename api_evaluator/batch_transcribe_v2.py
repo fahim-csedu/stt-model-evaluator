@@ -184,7 +184,7 @@ def append_to_csv(csv_path, row_data):
     file_exists = os.path.exists(csv_path)
     
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['audio_file_path', 'transcription_file_path', 'audio_length_seconds', 'api_response_time_seconds']
+        fieldnames = ['audio_file_path', 'transcription_file_path', 'transcript', 'audio_length_seconds', 'api_response_time_seconds']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         if not file_exists:
@@ -261,6 +261,7 @@ def process_audio_files():
                 csv_row = {
                     'audio_file_path': str(audio_file),
                     'transcription_file_path': str(json_path),
+                    'transcript': transcript,
                     'audio_length_seconds': f"{duration:.2f}" if duration else 'N/A',
                     'api_response_time_seconds': f"{result['api_response_time']:.2f}" if result['api_response_time'] else 'N/A'
                 }
@@ -280,6 +281,7 @@ def process_audio_files():
                 csv_row = {
                     'audio_file_path': str(audio_file),
                     'transcription_file_path': 'ERROR',
+                    'transcript': f'ERROR: {error_msg}',
                     'audio_length_seconds': 'N/A',
                     'api_response_time_seconds': 'N/A'
                 }
@@ -296,6 +298,7 @@ def process_audio_files():
             csv_row = {
                 'audio_file_path': str(audio_file),
                 'transcription_file_path': 'ERROR',
+                'transcript': f'EXCEPTION: {str(e)}',
                 'audio_length_seconds': 'N/A',
                 'api_response_time_seconds': 'N/A'
             }

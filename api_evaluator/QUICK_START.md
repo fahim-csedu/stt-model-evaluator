@@ -47,11 +47,13 @@ Or double-click: `run_batch_v2.bat`
 1. Scans `D:\cv_eval_bn\validated` for MP3 files
 2. Skips files that already have `.json` transcripts
 3. Processes each file and saves transcript in the same folder
-4. Updates CSV with: audio path, transcript path, audio length, API response time
+4. Updates CSV with: audio path, transcript path, transcript text, audio length, API response time
 
 ### Output:
 - **JSON files**: Saved next to each audio file (e.g., `audio.mp3` → `audio.json`)
 - **CSV file**: `D:\cv_eval_bn\transcription_path.csv`
+  - Columns: audio_file_path, transcription_file_path, transcript, audio_length_seconds, api_response_time_seconds
+  - Perfect for benchmarking and model evaluation!
 
 ### Resume:
 If interrupted, just run again - it skips already processed files!
@@ -63,6 +65,26 @@ Edit `config.py` to change:
 - `CSV_OUTPUT_PATH`: Where to save the CSV
 - `API_TIMEOUT`: How long to wait for API response (default: 120s)
 - `REQUEST_DELAY`: Delay between requests (default: 1s)
+
+## Step 3: Analyze Results
+
+After processing, analyze the benchmark data:
+
+```bash
+python analyze_results.py
+```
+Or double-click: `analyze_results.bat`
+
+### What you get:
+- Success/failure statistics
+- Audio duration statistics (total, average, min, max)
+- API processing time statistics
+- Real-Time Factor (RTF) analysis
+- Throughput metrics (files/hour, audio hours/hour)
+- Distribution by audio length
+- Sample transcripts
+
+This gives you a complete benchmark report!
 
 ## Monitoring Progress
 
