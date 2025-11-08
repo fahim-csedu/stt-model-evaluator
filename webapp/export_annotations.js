@@ -1,42 +1,37 @@
 /**
- * Export annotations from JSONL to CSV
+ * Export annotations from individual JSON files to CSV
  * Usage: node export_annotations.js
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const ANNOTATIONS_FILE = path.join(__dirname, 'annotations.jsonl');
+const ANNOTATIONS_DIR = path.join(__dirname, 'annotations');
 const OUTPUT_FILE = path.join(__dirname, 'annotations_export.csv');
 
 function exportAnnotations() {
-    if (!fs.existsSync(ANNOTATIONS_FILE)) {
-        console.log('No annotations file found.');
+    if (!fs.existsSync(ANNOTATIONS_DIR)) {
+        console.log('No annotations directory found.');
         return;
     }
 
-    const content = fs.readFileSync(ANNOTATIONS_FILE, 'utf-8');
-    const lines = content.trim().split('\n').filter(line => line);
+    // Read all annotation files
+    const files = fs.readdirSync(ANNOTATIONS_DIR).filter(f => f.endsWith('_annotation.json'));
 
-    if (lines.length === 0) {
-        console.log('No annotations found.');
+    if (files.length === 0) {
+        console.log('No annotation files found.');
         return;
     }
 
     // Parse all annotations
     const annotations = [];
-    for (const line of lines) {
+    for (const file of files) {
         try {
-            annotations.push(JSON.parse(line));
+            const content = fs.readFileSync(path.join(ANNOTATIONS_DIR, file), 'utf-8');
+            annotations.push(JSON.parse(content));
         } catch (e) {
-            console.error('Error parsing line:', line);
+            console.error('Error parsing file:', file, e.message);
         }
-    }
-
-    // Get unique filenames (keep only latest annotation per file)
-    const latestAnnotations = new Map();
-    for (const ann of annotations) {
-        latestAnnotations.set(ann.filename, ann);
     }
 
     // CSV headers
@@ -62,7 +57,7 @@ function exportAnnotations() {
     // Create CSV content
     let csv = headers.join(',') + '\n';
 
-    for (const ann of latestAnnotations.values()) {
+    for (const ann of annotations) {
         const row = headers.map(header => {
             let value = ann[header] || '';
             // Escape quotes and wrap in quotes if contains comma or quote
@@ -80,13 +75,12 @@ function exportAnnotations() {
     console.log(`\nAnnotation Export Complete`);
     console.log(`========================`);
     console.log(`Total annotations: ${annotations.length}`);
-    console.log(`Unique files: ${latestAnnotations.size}`);
     console.log(`Output file: ${OUTPUT_FILE}`);
     console.log(`\nSummary by annotator:`);
 
     // Count by annotator
     const byAnnotator = {};
-    for (const ann of latestAnnotations.values()) {
+    for (const ann of annotations) {
         byAnnotator[ann.annotator] = (byAnnotator[ann.annotator] || 0) + 1;
     }
 

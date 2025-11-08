@@ -371,11 +371,16 @@ app.post('/api/annotation', requireAuth, async (req, res) => {
         annotation.annotator = session.username;
         annotation.timestamp = new Date().toISOString();
         
-        // Save to annotations file
-        const annotationsPath = path.join(__dirname, 'annotations.jsonl');
-        const annotationLine = JSON.stringify(annotation) + '\n';
+        // Save to individual JSON file in annotations folder
+        const annotationsDir = path.join(__dirname, 'annotations');
+        if (!fs.existsSync(annotationsDir)) {
+            fs.mkdirSync(annotationsDir, { recursive: true });
+        }
         
-        fs.appendFileSync(annotationsPath, annotationLine, 'utf-8');
+        const annotationFilename = `${annotation.filename}_annotation.json`;
+        const annotationPath = path.join(annotationsDir, annotationFilename);
+        
+        fs.writeFileSync(annotationPath, JSON.stringify(annotation, null, 2), 'utf-8');
         
         res.json({ success: true, message: 'Annotation saved' });
     } catch (error) {
@@ -393,30 +398,14 @@ app.get('/api/annotation', requireAuth, async (req, res) => {
         }
         
         const audioFileName = path.basename(decodeURIComponent(filePath), path.extname(decodeURIComponent(filePath)));
-        const annotationsPath = path.join(__dirname, 'annotations.jsonl');
+        const annotationsDir = path.join(__dirname, 'annotations');
+        const annotationFilename = `${audioFileName}_annotation.json`;
+        const annotationPath = path.join(annotationsDir, annotationFilename);
         
-        if (!fs.existsSync(annotationsPath)) {
-            return res.status(404).json({ error: 'No annotations found' });
-        }
-        
-        // Read all annotations and find the latest one for this file
-        const content = fs.readFileSync(annotationsPath, 'utf-8');
-        const lines = content.trim().split('\n').filter(line => line);
-        
-        let latestAnnotation = null;
-        for (const line of lines) {
-            try {
-                const annotation = JSON.parse(line);
-                if (annotation.filename === audioFileName) {
-                    latestAnnotation = annotation;
-                }
-            } catch (e) {
-                // Skip invalid lines
-            }
-        }
-        
-        if (latestAnnotation) {
-            return res.json(latestAnnotation);
+        if (fs.existsSync(annotationPath)) {
+            const content = fs.readFileSync(annotationPath, 'utf-8');
+            const annotation = JSON.parse(content);
+            return res.json(annotation);
         } else {
             return res.status(404).json({ error: 'No annotation found for this file' });
         }

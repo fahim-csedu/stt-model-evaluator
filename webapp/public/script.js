@@ -47,6 +47,7 @@ class AudioFileBrowser {
         
         // Annotation elements
         this.saveAnnotationBtn = document.getElementById('saveAnnotation');
+        this.copyRowDataBtn = document.getElementById('copyRowData');
         this.annotationStatus = document.getElementById('annotationStatus');
         this.copyReferenceBtn = document.getElementById('copyReference');
         this.copyAPIBtn = document.getElementById('copyAPI');
@@ -56,6 +57,7 @@ class AudioFileBrowser {
         this.backBtn.addEventListener('click', () => this.goBack());
         this.logoutBtn.addEventListener('click', () => this.logout());
         this.saveAnnotationBtn.addEventListener('click', () => this.saveAnnotation());
+        this.copyRowDataBtn.addEventListener('click', () => this.copyRowData());
         this.copyReferenceBtn.addEventListener('click', () => this.copyToClipboard('reference'));
         this.copyAPIBtn.addEventListener('click', () => this.copyToClipboard('api'));
         
@@ -87,6 +89,52 @@ class AudioFileBrowser {
             setTimeout(() => btn.textContent = originalText, 1000);
         } catch (error) {
             console.error('Failed to copy:', error);
+        }
+    }
+    
+    async copyRowData() {
+        try {
+            // Get all form values in the order they should appear in Google Sheets
+            const rowData = [
+                document.getElementById('annFilename').value || '',
+                document.getElementById('annDuration').value || '',
+                this.referenceContent.textContent || '',
+                this.transcriptContent.textContent || '',
+                document.getElementById('annRefCorrect').value || '',
+                document.getElementById('annModelCorrect').value || '',
+                document.getElementById('annIdealTranscript').value || '',
+                document.getElementById('annProperNoun').value || '',
+                document.getElementById('annAccentVariation').value || '',
+                document.getElementById('annNumericDate').value || '',
+                document.getElementById('annHomophone').value || '',
+                document.getElementById('annForeignLanguage').value || '',
+                document.getElementById('annGender').value || '',
+                document.getElementById('annBackgroundNoise').value || '',
+                document.getElementById('annAudioQuality').value || '',
+                document.getElementById('annNotes').value || ''
+            ];
+            
+            // Join with tabs for Google Sheets paste
+            const tsvData = rowData.join('\t');
+            
+            await navigator.clipboard.writeText(tsvData);
+            
+            // Visual feedback
+            const originalText = this.copyRowDataBtn.textContent;
+            this.copyRowDataBtn.textContent = '✓ Copied!';
+            this.copyRowDataBtn.style.background = '#218838';
+            
+            setTimeout(() => {
+                this.copyRowDataBtn.textContent = originalText;
+                this.copyRowDataBtn.style.background = '';
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Failed to copy row data:', error);
+            this.copyRowDataBtn.textContent = '✗ Failed';
+            setTimeout(() => {
+                this.copyRowDataBtn.textContent = '📋 Copy Row Data';
+            }, 2000);
         }
     }
     
@@ -335,12 +383,43 @@ class AudioFileBrowser {
     displayMetadata(reference) {
         const metadata = [];
         
-        if (reference.age) metadata.push(`<span class="metadata-item"><span class="metadata-label">Age:</span> ${reference.age}</span>`);
-        if (reference.variant) metadata.push(`<span class="metadata-item"><span class="metadata-label">Variant:</span> ${reference.variant}</span>`);
-        if (reference.accents) metadata.push(`<span class="metadata-item"><span class="metadata-label">Accents:</span> ${reference.accents}</span>`);
-        if (reference.demog_group) metadata.push(`<span class="metadata-item"><span class="metadata-label">Demographics:</span> ${reference.demog_group}</span>`);
+        // Helper to check if value is meaningful
+        const isValid = (value) => {
+            if (!value) return false;
+            const lower = value.toLowerCase();
+            return !lower.includes('unknown') && value.trim() !== '';
+        };
         
-        this.fileMetadata.innerHTML = metadata.join('');
+        // Parse demographics to extract individual fields
+        let gender = reference.gender || '';
+        let age = reference.age || '';
+        let accent = reference.accents || '';
+        
+        // If demog_group exists, try to parse it (format: gender|age|accent)
+        if (reference.demog_group) {
+            const parts = reference.demog_group.split('|');
+            if (parts.length >= 3) {
+                if (!gender || !isValid(gender)) gender = parts[0];
+                if (!age || !isValid(age)) age = parts[1];
+                if (!accent || !isValid(accent)) accent = parts[2];
+            }
+        }
+        
+        // Add valid fields only
+        if (isValid(age)) {
+            metadata.push(`<span class="metadata-item"><span class="metadata-label">Age:</span> ${age}</span>`);
+        }
+        if (isValid(gender)) {
+            metadata.push(`<span class="metadata-item"><span class="metadata-label">Gender:</span> ${gender}</span>`);
+        }
+        if (isValid(accent)) {
+            metadata.push(`<span class="metadata-item"><span class="metadata-label">Accent:</span> ${accent}</span>`);
+        }
+        if (isValid(reference.variant)) {
+            metadata.push(`<span class="metadata-item"><span class="metadata-label">Variant:</span> ${reference.variant}</span>`);
+        }
+        
+        this.fileMetadata.innerHTML = metadata.length > 0 ? metadata.join('') : '<span class="metadata-item">No metadata available</span>';
     }
     
     populateAnnotationForm(filename, reference) {

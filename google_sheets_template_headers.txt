@@ -1,0 +1,31 @@
+Copy these headers into Row 1 of your Google Sheets "Data" tab:
+
+Filename	Duration (seconds)	Reference Transcript	API Transcript	Reference Correct?	Model Correct?	Ideal Transcript	Proper Noun Recognition	Accent Variation	Numeric/Date Recognition	Homophone Confusion	Foreign Language >10%	Speaker Gender	Background Noise	Audio Quality	Notes
+
+Instructions:
+1. Open your Google Sheet
+2. Go to the "Data" tab
+3. Select cell A1
+4. Paste the line above (Ctrl+V or Cmd+V)
+5. The headers will populate columns A through P
+6. Start pasting annotation data in row 2 (A2)
+
+Column Details:
+A - Filename (e.g., common_voice_bn_30704510)
+B - Duration (seconds) (e.g., 9.6195)
+C - Reference Transcript (Bengali text)
+D - API Transcript (Bengali text)
+E - Reference Correct? (yes/no)
+F - Model Correct? (yes/no)
+G - Ideal Transcript (text, if both wrong)
+H - Proper Noun Recognition (yes/no)
+I - Accent Variation (yes/no)
+J - Numeric/Date Recognition (yes/no)
+K - Homophone Confusion (yes/no)
+L - Foreign Language >10% (yes/no)
+M - Speaker Gender (M/F/Unknown)
+N - Background Noise (None/Music/Crowd/Traffic/Echo)
+O - Audio Quality (Excellent/Good/Fair/Poor)
+P - Notes (free text)
+
+Optional: Add data validation for columns E, F, H, I, J, K, L, M, N, O to restrict values
