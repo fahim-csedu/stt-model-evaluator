@@ -485,12 +485,17 @@ class AudioFileBrowser {
             return;
         }
         
+        // Normalize for comparison (remove punctuation differences)
+        const normalizeForComparison = (text) => {
+            return text.replace(/[-–—]/g, ' ').replace(/\s+/g, ' ');
+        };
+        
         // Simple word-level diff
         const refWords = this.tokenize(referenceText);
         const modelWords = this.tokenize(modelText);
         
         // Use a simple diff algorithm
-        const diff = this.computeDiff(refWords, modelWords);
+        const diff = this.computeDiff(refWords, modelWords, normalizeForComparison);
         
         // Build HTML with highlights
         let html = '';
