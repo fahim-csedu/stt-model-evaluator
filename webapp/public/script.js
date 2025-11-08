@@ -102,9 +102,10 @@ class AudioFileBrowser {
     }
     
     updateUI(data) {
-        this.currentPathSpan.textContent = data.currentPath || 'Root';
-        this.breadcrumb.textContent = `Path: ${data.currentPath || '/'}`;
-        this.backBtn.disabled = this.pathHistory.length === 0 && !data.currentPath;
+        this.currentPathSpan.textContent = data.currentPath || 'validated';
+        this.breadcrumb.textContent = `Path: ${data.currentPath || 'validated'}`;
+        // Disable back button when at root (no history and no current path)
+        this.backBtn.disabled = this.pathHistory.length === 0;
     }
     
     renderFileList(items) {
@@ -288,16 +289,9 @@ class AudioFileBrowser {
         if (this.pathHistory.length > 0) {
             const previousPath = this.pathHistory.pop();
             this.loadDirectory(previousPath);
-        } else if (this.currentPath) {
-            const pathParts = this.currentPath.split('/').filter(part => part.length > 0);
-            if (pathParts.length > 0) {
-                pathParts.pop();
-                const parentPath = pathParts.join('/');
-                this.loadDirectory(parentPath);
-            } else {
-                this.loadDirectory('');
-            }
         }
+        // Don't allow going back beyond the root (validated directory)
+        // The server already restricts access, so we just disable the button at root
     }
     
     updateUserInfo() {

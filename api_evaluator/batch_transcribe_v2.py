@@ -44,31 +44,40 @@ def get_audio_duration_estimate(audio_path):
 
 
 def find_all_audio_files(base_dir):
-    """Recursively find all audio files in the directory"""
+    """Recursively find all audio files in the directory, excluding 'remaining' folder"""
     audio_files = []
     base_path = Path(base_dir)
     
-    for ext in AUDIO_EXTENSIONS:
-        audio_files.extend(base_path.rglob(f'*{ext}'))
+    # Get all subdirectories in base_dir, excluding 'remaining'
+    subdirs = [d for d in base_path.iterdir() if d.is_dir() and d.name.lower() != 'remaining']
+    
+    # Process each subdirectory
+    for subdir in subdirs:
+        for ext in AUDIO_EXTENSIONS:
+            audio_files.extend(subdir.rglob(f'*{ext}'))
     
     return sorted(audio_files)
 
 
 def get_existing_transcripts(base_dir):
-    """Get set of audio files that already have transcripts"""
+    """Get set of audio files that already have transcripts, excluding 'remaining' folder"""
     existing = set()
     base_path = Path(base_dir)
     
-    # Find all JSON files
-    for json_file in base_path.rglob('*.json'):
-        # Get the corresponding audio file path (without extension)
-        audio_base = json_file.with_suffix('')
-        # Check if any audio file with this base name exists
-        for ext in AUDIO_EXTENSIONS:
-            audio_file = audio_base.with_suffix(ext)
-            if audio_file.exists():
-                existing.add(str(audio_file))
-                break
+    # Get all subdirectories in base_dir, excluding 'remaining'
+    subdirs = [d for d in base_path.iterdir() if d.is_dir() and d.name.lower() != 'remaining']
+    
+    # Find all JSON files in subdirectories
+    for subdir in subdirs:
+        for json_file in subdir.rglob('*.json'):
+            # Get the corresponding audio file path (without extension)
+            audio_base = json_file.with_suffix('')
+            # Check if any audio file with this base name exists
+            for ext in AUDIO_EXTENSIONS:
+                audio_file = audio_base.with_suffix(ext)
+                if audio_file.exists():
+                    existing.add(str(audio_file))
+                    break
     
     return existing
 

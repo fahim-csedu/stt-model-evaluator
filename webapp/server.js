@@ -188,6 +188,11 @@ app.get('/api/browse', requireAuth, (req, res) => {
 
         items.forEach(item => {
             if (item.isDirectory()) {
+                // Skip the "remaining" folder
+                if (item.name.toLowerCase() === 'remaining') {
+                    return;
+                }
+                
                 const itemPath = normalizePath(relativePath ? `${relativePath}/${item.name}` : item.name);
                 const dirFullPath = path.join(fullPath, item.name);
                 let fileCount = 0;
@@ -204,7 +209,8 @@ app.get('/api/browse', requireAuth, (req, res) => {
                     fileCount: fileCount
                 });
             } else {
-                if (item.name.match(/\.(flac|wav|mp3|m4a|ogg)$/i)) {
+                // Only show MP3 files (not WAV files)
+                if (item.name.match(/\.mp3$/i)) {
                     audioFiles.push(item.name);
                 } else if (item.name.endsWith('.json')) {
                     jsonFiles.push(item.name);
@@ -213,7 +219,7 @@ app.get('/api/browse', requireAuth, (req, res) => {
         });
 
         audioFiles.forEach(audioFile => {
-            const baseName = audioFile.replace(/\.(flac|wav|mp3|m4a|ogg)$/i, '');
+            const baseName = audioFile.replace(/\.mp3$/i, '');
             const matchingJson = jsonFiles.find(jsonFile => jsonFile === baseName + '.json');
             const audioPath = normalizePath(relativePath ? `${relativePath}/${audioFile}` : audioFile);
             const jsonPath = matchingJson ? normalizePath(relativePath ? `${relativePath}/${matchingJson}` : matchingJson) : null;
@@ -244,7 +250,7 @@ app.get('/api/absolutePath', requireAuth, (req, res) => {
     res.json({ absolutePath: normalizedPath });
 });
 
-// Get transcript from csedu_labels directory
+// Get transcript from same folder as audio file
 app.get('/api/transcript', requireAuth, async (req, res) => {
     const filePath = req.query.file;
     if (!filePath) {
@@ -252,9 +258,13 @@ app.get('/api/transcript', requireAuth, async (req, res) => {
     }
 
     const decodedPath = decodeURIComponent(filePath);
-    const audioFileName = path.basename(decodedPath, path.extname(decodedPath));
-    const jsonFileName = audioFileName + '.json';
-    const jsonFullPath = path.join(TRANSCRIPTION_DIR, jsonFileName);
+    const windowsPath = decodedPath.replace(/\//g, path.sep);
+    const audioFullPath = path.resolve(AUDIO_BASE_DIR, windowsPath);
+    
+    // Get JSON file in same folder as audio file
+    const audioFileName = path.basename(audioFullPath, path.extname(audioFullPath));
+    const audioDir = path.dirname(audioFullPath);
+    const jsonFullPath = path.join(audioDir, audioFileName + '.json');
 
     // Check if JSON exists
     if (fs.existsSync(jsonFullPath)) {

@@ -1,10 +1,10 @@
 // Configuration file for the STT Model Evaluator
 const config = {
     // Base directory for audio files
-    AUDIO_BASE_DIR: process.env.AUDIO_BASE_DIR || 'D:\\cv-corpus-23.0-2025-09-05\\bn\\clips',
+    AUDIO_BASE_DIR: process.env.AUDIO_BASE_DIR || 'D:\\cv_eval_bn\\validated',
     
-    // Directory for transcriptions
-    TRANSCRIPTION_DIR: process.env.TRANSCRIPTION_DIR || 'D:\\cv-corpus-23.0-2025-09-05\\bn\\csedu_labels',
+    // Directory for transcriptions (same as audio base dir - JSON files are in same folders)
+    TRANSCRIPTION_DIR: process.env.TRANSCRIPTION_DIR || 'D:\\cv_eval_bn\\validated',
     
     // Server port
     PORT: process.env.PORT || 3002,
