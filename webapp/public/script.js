@@ -715,27 +715,27 @@ class AudioFileBrowser {
     }
     
     loadAnnotation(annotation) {
-        // Load radio buttons
-        if (annotation.refCorrect === 'yes') document.getElementById('annRefCorrectYes').checked = true;
-        else if (annotation.refCorrect === 'no') document.getElementById('annRefCorrectNo').checked = true;
+        // Load radio buttons (handle both old lowercase and new capitalized values)
+        if (annotation.refCorrect === 'Yes' || annotation.refCorrect === 'yes') document.getElementById('annRefCorrectYes').checked = true;
+        else if (annotation.refCorrect === 'No' || annotation.refCorrect === 'no') document.getElementById('annRefCorrectNo').checked = true;
         
-        if (annotation.modelCorrect === 'yes') document.getElementById('annModelCorrectYes').checked = true;
-        else if (annotation.modelCorrect === 'no') document.getElementById('annModelCorrectNo').checked = true;
+        if (annotation.modelCorrect === 'Yes' || annotation.modelCorrect === 'yes') document.getElementById('annModelCorrectYes').checked = true;
+        else if (annotation.modelCorrect === 'No' || annotation.modelCorrect === 'no') document.getElementById('annModelCorrectNo').checked = true;
         
-        if (annotation.properNoun === 'yes') document.getElementById('annProperNounYes').checked = true;
-        else if (annotation.properNoun === 'no') document.getElementById('annProperNounNo').checked = true;
+        if (annotation.properNoun === 'Yes' || annotation.properNoun === 'yes') document.getElementById('annProperNounYes').checked = true;
+        else if (annotation.properNoun === 'No' || annotation.properNoun === 'no') document.getElementById('annProperNounNo').checked = true;
         
-        if (annotation.accentVariation === 'yes') document.getElementById('annAccentVariationYes').checked = true;
-        else if (annotation.accentVariation === 'no') document.getElementById('annAccentVariationNo').checked = true;
+        if (annotation.accentVariation === 'Yes' || annotation.accentVariation === 'yes') document.getElementById('annAccentVariationYes').checked = true;
+        else if (annotation.accentVariation === 'No' || annotation.accentVariation === 'no') document.getElementById('annAccentVariationNo').checked = true;
         
-        if (annotation.numericDate === 'yes') document.getElementById('annNumericDateYes').checked = true;
-        else if (annotation.numericDate === 'no') document.getElementById('annNumericDateNo').checked = true;
+        if (annotation.numericDate === 'Yes' || annotation.numericDate === 'yes') document.getElementById('annNumericDateYes').checked = true;
+        else if (annotation.numericDate === 'No' || annotation.numericDate === 'no') document.getElementById('annNumericDateNo').checked = true;
         
-        if (annotation.homophone === 'yes') document.getElementById('annHomophoneYes').checked = true;
-        else if (annotation.homophone === 'no') document.getElementById('annHomophoneNo').checked = true;
+        if (annotation.homophone === 'Yes' || annotation.homophone === 'yes') document.getElementById('annHomophoneYes').checked = true;
+        else if (annotation.homophone === 'No' || annotation.homophone === 'no') document.getElementById('annHomophoneNo').checked = true;
         
-        if (annotation.foreignLanguage === 'yes') document.getElementById('annForeignLanguageYes').checked = true;
-        else if (annotation.foreignLanguage === 'no') document.getElementById('annForeignLanguageNo').checked = true;
+        if (annotation.foreignLanguage === 'Yes' || annotation.foreignLanguage === 'yes') document.getElementById('annForeignLanguageYes').checked = true;
+        else if (annotation.foreignLanguage === 'No' || annotation.foreignLanguage === 'no') document.getElementById('annForeignLanguageNo').checked = true;
         
         if (annotation.gender === 'M') document.getElementById('annGenderM').checked = true;
         else if (annotation.gender === 'F') document.getElementById('annGenderF').checked = true;

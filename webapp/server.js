@@ -113,8 +113,43 @@ const DEMO_ACCOUNTS = {
     'khairul': 'Kj9$pW3cF7sD'
 };
 
-// Session storage
+// Session storage with persistence
+const SESSIONS_FILE = path.join(__dirname, 'sessions.json');
 const sessions = new Map();
+
+// Load sessions from file on startup
+function loadSessions() {
+    try {
+        if (fs.existsSync(SESSIONS_FILE)) {
+            const data = fs.readFileSync(SESSIONS_FILE, 'utf-8');
+            const sessionsArray = JSON.parse(data);
+            sessionsArray.forEach(([key, value]) => {
+                // Only load sessions that haven't expired (24 hours)
+                const loginTime = new Date(value.loginTime);
+                const now = new Date();
+                const hoursSinceLogin = (now - loginTime) / (1000 * 60 * 60);
+                if (hoursSinceLogin < 24) {
+                    sessions.set(key, value);
+                }
+            });
+            console.log(`Loaded ${sessions.size} active sessions from disk`);
+        }
+    } catch (error) {
+        console.error('Error loading sessions:', error);
+    }
+}
+
+// Save sessions to file
+function saveSessions() {
+    try {
+        const sessionsArray = Array.from(sessions.entries());
+        fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessionsArray, null, 2), 'utf-8');
+    } catch (error) {
+        console.error('Error saving sessions:', error);
+    }
+}
+
+loadSessions();
 
 // Middleware
 app.use(express.json());
@@ -216,6 +251,7 @@ app.post('/api/login', (req, res) => {
     if (DEMO_ACCOUNTS[username] && DEMO_ACCOUNTS[username] === password) {
         const sessionId = Math.random().toString(36).substring(2) + Date.now().toString(36);
         sessions.set(sessionId, { username, loginTime: new Date() });
+        saveSessions(); // Persist session to disk
         if (DEBUG) {
             console.log(`Login successful - User: ${username}, Session: ${sessionId}`);
         }
@@ -230,6 +266,7 @@ app.post('/api/logout', (req, res) => {
     const sessionId = req.headers['x-session-id'];
     if (sessionId) {
         sessions.delete(sessionId);
+        saveSessions(); // Persist session removal to disk
     }
     res.json({ success: true });
 });
