@@ -2,14 +2,11 @@
 Configuration file for batch transcription
 """
 
-# Directory containing audio files to process
-AUDIO_BASE_DIR = r"D:\cv-corpus-23.0-2025-09-05\bn\clips"
+# Root directory containing folders with audio files
+AUDIO_BASE_DIR = r"D:\cv_eval_bn\validated"
 
-# Directory to save API response JSON files
-API_RESPONSE_DIR = r"D:\cv-corpus-23.0-2025-09-05\bn\csedu_labels"
-
-# Path to output CSV file
-CSV_OUTPUT_PATH = r"D:\cv-corpus-23.0-2025-09-05\bn\transcription_results.csv"
+# Path to output CSV file (in parent directory)
+CSV_OUTPUT_PATH = r"D:\cv_eval_bn\transcription_path.csv"
 
 # STT API endpoint
 SOCKET_URL = "https://voice.bangla.gov.bd:9394"
