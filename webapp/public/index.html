@@ -38,6 +38,7 @@
                         <div class="player-info">
                             <h3 id="currentFile">No file selected</h3>
                             <div id="transcriptionStatus" class="transcription-status"></div>
+                            <div id="fileMetadata" class="file-metadata"></div>
                         </div>
                         <audio id="audioPlayer" controls style="width: 100%;">
                             Your browser does not support the audio element.
@@ -45,11 +46,165 @@
                     </div>
                     
                     <div class="transcript-area">
-                        <div class="transcript-header">
-                            <h4>Transcript</h4>
+                        <div class="transcript-section">
+                            <div class="transcript-header">
+                                <h4>Reference Transcript</h4>
+                                <span class="transcript-label">(Original)</span>
+                                <button id="copyReference" class="copy-btn" title="Copy to clipboard">📋</button>
+                            </div>
+                            <div id="referenceContent" class="transcript-content reference-transcript">
+                                Select an audio file to view the reference transcript
+                            </div>
                         </div>
-                        <div id="transcriptContent" class="transcript-content">
-                            Select an audio file to view its transcript
+                        
+                        <div class="transcript-section">
+                            <div class="transcript-header">
+                                <h4>API Generated Transcript</h4>
+                                <span class="transcript-label">(STT Model Output)</span>
+                                <button id="copyAPI" class="copy-btn" title="Copy to clipboard">📋</button>
+                            </div>
+                            <div id="transcriptContent" class="transcript-content api-transcript">
+                                Select an audio file to view the API transcript
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="annotation-area">
+                        <div class="annotation-header">
+                            <h3>Annotation</h3>
+                            <div class="annotation-actions">
+                                <button id="saveAnnotation" class="btn-primary">Save Annotation</button>
+                                <span id="annotationStatus" class="annotation-status"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="annotation-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Filename</label>
+                                    <input type="text" id="annFilename" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Duration (seconds)</label>
+                                    <input type="text" id="annDuration" readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group full-width">
+                                    <label>Reference Transcript Correct?</label>
+                                    <select id="annRefCorrect">
+                                        <option value="">Select...</option>
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Model Transcript Correct?</label>
+                                    <select id="annModelCorrect">
+                                        <option value="">Select...</option>
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Ideal Transcript <span class="hint">(Only fill if both are incorrect)</span></label>
+                                <textarea id="annIdealTranscript" rows="3" placeholder="Enter the correct transcript..."></textarea>
+                            </div>
+                            
+                            <div class="form-section">
+                                <h4>Error Categories</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Proper Noun Recognition</label>
+                                        <select id="annProperNoun">
+                                            <option value="">Select...</option>
+                                            <option value="yes">Yes</option>
+                                            <option value="no">No</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Accent Variation</label>
+                                        <select id="annAccentVariation">
+                                            <option value="">Select...</option>
+                                            <option value="yes">Yes</option>
+                                            <option value="no">No</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Numeric/Date Recognition</label>
+                                        <select id="annNumericDate">
+                                            <option value="">Select...</option>
+                                            <option value="yes">Yes</option>
+                                            <option value="no">No</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Homophone Confusion</label>
+                                        <select id="annHomophone">
+                                            <option value="">Select...</option>
+                                            <option value="yes">Yes</option>
+                                            <option value="no">No</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Contains >10% Foreign Language?</label>
+                                    <select id="annForeignLanguage">
+                                        <option value="">Select...</option>
+                                        <option value="yes">Yes</option>
+                                        <option value="no">No</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-section">
+                                <h4>Audio Quality</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Speaker Gender</label>
+                                        <select id="annGender">
+                                            <option value="">Select...</option>
+                                            <option value="M">Male</option>
+                                            <option value="F">Female</option>
+                                            <option value="Unknown">Unknown</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Background Noise</label>
+                                        <select id="annBackgroundNoise">
+                                            <option value="">Select...</option>
+                                            <option value="None">None</option>
+                                            <option value="Music">Music</option>
+                                            <option value="Crowd">Crowd</option>
+                                            <option value="Traffic">Traffic</option>
+                                            <option value="Echo">Echo</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Audio Quality</label>
+                                    <select id="annAudioQuality">
+                                        <option value="">Select...</option>
+                                        <option value="Excellent">Excellent</option>
+                                        <option value="Good">Good</option>
+                                        <option value="Fair">Fair</option>
+                                        <option value="Poor">Poor</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Notes</label>
+                                <textarea id="annNotes" rows="4" placeholder="Additional observations..."></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>

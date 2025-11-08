@@ -15,6 +15,62 @@ try {
 const app = express();
 const { AUDIO_BASE_DIR, TRANSCRIPTION_DIR, PORT, SESSION_TIMEOUT, DEBUG } = config;
 
+// Load reference data from CSV
+const referenceData = new Map();
+const csvPath = path.join(__dirname, 'webapp_reference.csv');
+
+function loadReferenceData() {
+    if (!fs.existsSync(csvPath)) {
+        console.log('Warning: webapp_reference.csv not found');
+        return;
+    }
+    
+    const csvContent = fs.readFileSync(csvPath, 'utf-8');
+    const lines = csvContent.split('\n');
+    
+    if (lines.length < 2) return;
+    
+    // Parse header
+    const headers = lines[0].split(',').map(h => h.trim());
+    
+    // Parse data rows
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Simple CSV parsing (handles quoted fields)
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let char of line) {
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                values.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        values.push(current.trim());
+        
+        // Create object from headers and values
+        const row = {};
+        headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+        });
+        
+        if (row.filename) {
+            referenceData.set(row.filename, row);
+        }
+    }
+    
+    console.log(`Loaded ${referenceData.size} reference records from CSV`);
+}
+
+loadReferenceData();
+
 // Helper function to normalize paths
 function normalizePath(pathStr) {
     if (!pathStr) return '';
@@ -278,6 +334,95 @@ app.get('/api/transcript', requireAuth, async (req, res) => {
         }
     } else {
         return res.status(404).json({ error: 'Transcript not found' });
+    }
+});
+
+// Get reference data from CSV
+app.get('/api/reference', requireAuth, async (req, res) => {
+    const filePath = req.query.file;
+    if (!filePath) {
+        return res.status(400).json({ error: 'File path required' });
+    }
+
+    const decodedPath = decodeURIComponent(filePath);
+    const audioFileName = path.basename(decodedPath, path.extname(decodedPath));
+    
+    const reference = referenceData.get(audioFileName);
+    
+    if (reference) {
+        return res.json(reference);
+    } else {
+        return res.status(404).json({ error: 'Reference data not found' });
+    }
+});
+
+// Save annotation
+app.post('/api/annotation', requireAuth, async (req, res) => {
+    try {
+        const annotation = req.body;
+        const sessionId = req.headers['x-session-id'];
+        const session = sessions.get(sessionId);
+        
+        if (!annotation.filename) {
+            return res.status(400).json({ error: 'Filename required' });
+        }
+        
+        // Add metadata
+        annotation.annotator = session.username;
+        annotation.timestamp = new Date().toISOString();
+        
+        // Save to annotations file
+        const annotationsPath = path.join(__dirname, 'annotations.jsonl');
+        const annotationLine = JSON.stringify(annotation) + '\n';
+        
+        fs.appendFileSync(annotationsPath, annotationLine, 'utf-8');
+        
+        res.json({ success: true, message: 'Annotation saved' });
+    } catch (error) {
+        console.error('Error saving annotation:', error);
+        res.status(500).json({ error: 'Failed to save annotation' });
+    }
+});
+
+// Get annotation for a file
+app.get('/api/annotation', requireAuth, async (req, res) => {
+    try {
+        const filePath = req.query.file;
+        if (!filePath) {
+            return res.status(400).json({ error: 'File path required' });
+        }
+        
+        const audioFileName = path.basename(decodeURIComponent(filePath), path.extname(decodeURIComponent(filePath)));
+        const annotationsPath = path.join(__dirname, 'annotations.jsonl');
+        
+        if (!fs.existsSync(annotationsPath)) {
+            return res.status(404).json({ error: 'No annotations found' });
+        }
+        
+        // Read all annotations and find the latest one for this file
+        const content = fs.readFileSync(annotationsPath, 'utf-8');
+        const lines = content.trim().split('\n').filter(line => line);
+        
+        let latestAnnotation = null;
+        for (const line of lines) {
+            try {
+                const annotation = JSON.parse(line);
+                if (annotation.filename === audioFileName) {
+                    latestAnnotation = annotation;
+                }
+            } catch (e) {
+                // Skip invalid lines
+            }
+        }
+        
+        if (latestAnnotation) {
+            return res.json(latestAnnotation);
+        } else {
+            return res.status(404).json({ error: 'No annotation found for this file' });
+        }
+    } catch (error) {
+        console.error('Error loading annotation:', error);
+        res.status(500).json({ error: 'Failed to load annotation' });
     }
 });
 

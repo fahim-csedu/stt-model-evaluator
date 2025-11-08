@@ -13,14 +13,11 @@ class AudioFileBrowser {
         this.pathHistory = [];
         this.selectedFile = null;
         this.currentTranscript = null;
+        this.currentReference = null;
         this.sessionId = localStorage.getItem('audioFileBrowserSession');
         this.username = localStorage.getItem('audioFileBrowserUsername');
         
-        console.log('Session ID:', this.sessionId);
-        console.log('Username:', this.username);
-        
         if (!this.sessionId) {
-            console.log('No session, redirecting to login');
             window.location.href = '/login.html';
             return;
         }
@@ -42,17 +39,28 @@ class AudioFileBrowser {
         this.audioPlayer = document.getElementById('audioPlayer');
         this.currentFileSpan = document.getElementById('currentFile');
         this.transcriptContent = document.getElementById('transcriptContent');
+        this.referenceContent = document.getElementById('referenceContent');
         this.transcriptionStatus = document.getElementById('transcriptionStatus');
+        this.fileMetadata = document.getElementById('fileMetadata');
         this.logoutBtn = document.getElementById('logoutBtn');
         this.userInfo = document.getElementById('userInfo');
+        
+        // Annotation elements
+        this.saveAnnotationBtn = document.getElementById('saveAnnotation');
+        this.annotationStatus = document.getElementById('annotationStatus');
+        this.copyReferenceBtn = document.getElementById('copyReference');
+        this.copyAPIBtn = document.getElementById('copyAPI');
     }
     
     bindEvents() {
         this.backBtn.addEventListener('click', () => this.goBack());
         this.logoutBtn.addEventListener('click', () => this.logout());
+        this.saveAnnotationBtn.addEventListener('click', () => this.saveAnnotation());
+        this.copyReferenceBtn.addEventListener('click', () => this.copyToClipboard('reference'));
+        this.copyAPIBtn.addEventListener('click', () => this.copyToClipboard('api'));
         
         document.addEventListener('keydown', (e) => {
-            const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+            const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT';
             
             if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                 if (!isTyping) {
@@ -68,15 +76,26 @@ class AudioFileBrowser {
         });
     }
     
+    async copyToClipboard(type) {
+        const text = type === 'reference' ? this.referenceContent.textContent : this.transcriptContent.textContent;
+        
+        try {
+            await navigator.clipboard.writeText(text);
+            const btn = type === 'reference' ? this.copyReferenceBtn : this.copyAPIBtn;
+            const originalText = btn.textContent;
+            btn.textContent = '✓';
+            setTimeout(() => btn.textContent = originalText, 1000);
+        } catch (error) {
+            console.error('Failed to copy:', error);
+        }
+    }
+    
     async loadDirectory(path) {
         try {
-            console.log('Loading directory:', path);
             this.fileList.innerHTML = '<div class="loading">Loading files...</div>';
             
             const response = await fetch(`/api/browse?path=${encodeURIComponent(path)}`, {
-                headers: {
-                    'x-session-id': this.sessionId
-                }
+                headers: { 'x-session-id': this.sessionId }
             });
             
             const data = await response.json();
@@ -104,7 +123,6 @@ class AudioFileBrowser {
     updateUI(data) {
         this.currentPathSpan.textContent = data.currentPath || 'validated';
         this.breadcrumb.textContent = `Path: ${data.currentPath || 'validated'}`;
-        // Disable back button when at root (no history and no current path)
         this.backBtn.disabled = this.pathHistory.length === 0;
     }
     
@@ -234,34 +252,63 @@ class AudioFileBrowser {
             this.audioPlayer.src = `/audio/${item.audioFile}?session=${encodeURIComponent(this.sessionId)}`;
             this.currentFileSpan.textContent = item.name;
             
-            // Show loading status
-            this.transcriptionStatus.textContent = 'Loading transcript...';
+            this.transcriptionStatus.textContent = 'Loading transcripts...';
             this.transcriptionStatus.className = 'transcription-status loading';
             this.transcriptContent.textContent = 'Loading...';
+            this.referenceContent.textContent = 'Loading...';
             
-            // Fetch transcript from csedu_labels
-            const response = await fetch(`/api/transcript?file=${encodeURIComponent(item.audioFile)}`, {
-                headers: {
-                    'x-session-id': this.sessionId
-                }
-            });
+            // Fetch transcripts and annotation in parallel
+            const [apiResponse, refResponse, annResponse] = await Promise.all([
+                fetch(`/api/transcript?file=${encodeURIComponent(item.audioFile)}`, {
+                    headers: { 'x-session-id': this.sessionId }
+                }),
+                fetch(`/api/reference?file=${encodeURIComponent(item.audioFile)}`, {
+                    headers: { 'x-session-id': this.sessionId }
+                }),
+                fetch(`/api/annotation?file=${encodeURIComponent(item.audioFile)}`, {
+                    headers: { 'x-session-id': this.sessionId }
+                })
+            ]);
             
-            if (response.ok) {
-                const transcript = await response.json();
+            // Handle API transcript
+            if (apiResponse.ok) {
+                const transcript = await apiResponse.json();
                 this.currentTranscript = transcript;
                 this.displayTranscript(transcript);
-                this.transcriptionStatus.textContent = 'Transcript loaded';
+                this.transcriptionStatus.textContent = 'Transcripts loaded';
                 this.transcriptionStatus.className = 'transcription-status success';
             } else {
-                this.transcriptContent.textContent = 'Transcript not available';
+                this.transcriptContent.textContent = 'API transcript not available';
                 this.currentTranscript = null;
-                this.transcriptionStatus.textContent = 'Failed to load transcript';
+                this.transcriptionStatus.textContent = 'API transcript not found';
                 this.transcriptionStatus.className = 'transcription-status error';
+            }
+            
+            // Handle reference data
+            if (refResponse.ok) {
+                const reference = await refResponse.json();
+                this.currentReference = reference;
+                this.referenceContent.textContent = reference.sentence || 'No reference available';
+                this.displayMetadata(reference);
+                this.populateAnnotationForm(item.name, reference);
+            } else {
+                this.referenceContent.textContent = 'Reference transcript not available';
+                this.currentReference = null;
+                this.populateAnnotationForm(item.name, null);
+            }
+            
+            // Handle existing annotation
+            if (annResponse.ok) {
+                const annotation = await annResponse.json();
+                this.loadAnnotation(annotation);
+            } else {
+                this.clearAnnotationForm();
             }
             
         } catch (error) {
             console.error('Error loading audio file:', error);
             this.transcriptContent.textContent = 'Error loading transcript';
+            this.referenceContent.textContent = 'Error loading reference';
             this.transcriptionStatus.textContent = 'Error';
             this.transcriptionStatus.className = 'transcription-status error';
         }
@@ -285,13 +332,128 @@ class AudioFileBrowser {
         this.transcriptContent.textContent = text;
     }
     
+    displayMetadata(reference) {
+        const metadata = [];
+        
+        if (reference.age) metadata.push(`<span class="metadata-item"><span class="metadata-label">Age:</span> ${reference.age}</span>`);
+        if (reference.variant) metadata.push(`<span class="metadata-item"><span class="metadata-label">Variant:</span> ${reference.variant}</span>`);
+        if (reference.accents) metadata.push(`<span class="metadata-item"><span class="metadata-label">Accents:</span> ${reference.accents}</span>`);
+        if (reference.demog_group) metadata.push(`<span class="metadata-item"><span class="metadata-label">Demographics:</span> ${reference.demog_group}</span>`);
+        
+        this.fileMetadata.innerHTML = metadata.join('');
+    }
+    
+    populateAnnotationForm(filename, reference) {
+        document.getElementById('annFilename').value = filename;
+        document.getElementById('annDuration').value = reference?.duration_s || '';
+        
+        // Pre-fill gender from CSV
+        const gender = reference?.gender || '';
+        const genderSelect = document.getElementById('annGender');
+        if (gender.toLowerCase().includes('male') && !gender.toLowerCase().includes('female')) {
+            genderSelect.value = 'M';
+        } else if (gender.toLowerCase().includes('female')) {
+            genderSelect.value = 'F';
+        } else {
+            genderSelect.value = 'Unknown';
+        }
+    }
+    
+    clearAnnotationForm() {
+        const fields = [
+            'annRefCorrect', 'annModelCorrect', 'annIdealTranscript',
+            'annProperNoun', 'annAccentVariation', 'annNumericDate',
+            'annHomophone', 'annForeignLanguage', 'annBackgroundNoise',
+            'annAudioQuality', 'annNotes'
+        ];
+        
+        fields.forEach(id => {
+            const element = document.getElementById(id);
+            if (element.tagName === 'SELECT') {
+                element.value = '';
+            } else {
+                element.value = '';
+            }
+        });
+    }
+    
+    loadAnnotation(annotation) {
+        document.getElementById('annRefCorrect').value = annotation.refCorrect || '';
+        document.getElementById('annModelCorrect').value = annotation.modelCorrect || '';
+        document.getElementById('annIdealTranscript').value = annotation.idealTranscript || '';
+        document.getElementById('annProperNoun').value = annotation.properNoun || '';
+        document.getElementById('annAccentVariation').value = annotation.accentVariation || '';
+        document.getElementById('annNumericDate').value = annotation.numericDate || '';
+        document.getElementById('annHomophone').value = annotation.homophone || '';
+        document.getElementById('annForeignLanguage').value = annotation.foreignLanguage || '';
+        document.getElementById('annGender').value = annotation.gender || '';
+        document.getElementById('annBackgroundNoise').value = annotation.backgroundNoise || '';
+        document.getElementById('annAudioQuality').value = annotation.audioQuality || '';
+        document.getElementById('annNotes').value = annotation.notes || '';
+        
+        this.annotationStatus.textContent = `Last saved: ${new Date(annotation.timestamp).toLocaleString()}`;
+        this.annotationStatus.className = 'annotation-status';
+    }
+    
+    async saveAnnotation() {
+        try {
+            const annotation = {
+                filename: document.getElementById('annFilename').value,
+                duration: document.getElementById('annDuration').value,
+                refCorrect: document.getElementById('annRefCorrect').value,
+                modelCorrect: document.getElementById('annModelCorrect').value,
+                idealTranscript: document.getElementById('annIdealTranscript').value,
+                properNoun: document.getElementById('annProperNoun').value,
+                accentVariation: document.getElementById('annAccentVariation').value,
+                numericDate: document.getElementById('annNumericDate').value,
+                homophone: document.getElementById('annHomophone').value,
+                foreignLanguage: document.getElementById('annForeignLanguage').value,
+                gender: document.getElementById('annGender').value,
+                backgroundNoise: document.getElementById('annBackgroundNoise').value,
+                audioQuality: document.getElementById('annAudioQuality').value,
+                notes: document.getElementById('annNotes').value
+            };
+            
+            if (!annotation.filename) {
+                this.annotationStatus.textContent = 'No file selected';
+                this.annotationStatus.className = 'annotation-status error';
+                return;
+            }
+            
+            this.annotationStatus.textContent = 'Saving...';
+            this.annotationStatus.className = 'annotation-status';
+            
+            const response = await fetch('/api/annotation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-session-id': this.sessionId
+                },
+                body: JSON.stringify(annotation)
+            });
+            
+            if (response.ok) {
+                this.annotationStatus.textContent = 'Saved successfully!';
+                this.annotationStatus.className = 'annotation-status success';
+                setTimeout(() => {
+                    this.annotationStatus.textContent = '';
+                }, 3000);
+            } else {
+                throw new Error('Failed to save annotation');
+            }
+            
+        } catch (error) {
+            console.error('Error saving annotation:', error);
+            this.annotationStatus.textContent = 'Error saving annotation';
+            this.annotationStatus.className = 'annotation-status error';
+        }
+    }
+    
     goBack() {
         if (this.pathHistory.length > 0) {
             const previousPath = this.pathHistory.pop();
             this.loadDirectory(previousPath);
         }
-        // Don't allow going back beyond the root (validated directory)
-        // The server already restricts access, so we just disable the button at root
     }
     
     updateUserInfo() {
@@ -310,9 +472,7 @@ class AudioFileBrowser {
         try {
             await fetch('/api/logout', {
                 method: 'POST',
-                headers: {
-                    'x-session-id': this.sessionId
-                }
+                headers: { 'x-session-id': this.sessionId }
             });
         } catch (error) {
             console.error('Logout error:', error);
