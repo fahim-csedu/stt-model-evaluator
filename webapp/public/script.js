@@ -46,8 +46,7 @@ class AudioFileBrowser {
         this.userInfo = document.getElementById('userInfo');
         
         // Annotation elements
-        this.saveAnnotationBtn = document.getElementById('saveAnnotation');
-        this.copyRowDataBtn = document.getElementById('copyRowData');
+        this.copyAndSaveBtn = document.getElementById('copyAndSave');
         this.annotationStatus = document.getElementById('annotationStatus');
         this.copyReferenceBtn = document.getElementById('copyReference');
         this.copyAPIBtn = document.getElementById('copyAPI');
@@ -56,8 +55,7 @@ class AudioFileBrowser {
     bindEvents() {
         this.backBtn.addEventListener('click', () => this.goBack());
         this.logoutBtn.addEventListener('click', () => this.logout());
-        this.saveAnnotationBtn.addEventListener('click', () => this.saveAnnotation());
-        this.copyRowDataBtn.addEventListener('click', () => this.copyRowData());
+        this.copyAndSaveBtn.addEventListener('click', () => this.copyAndSave());
         this.copyReferenceBtn.addEventListener('click', () => this.copyToClipboard('reference'));
         this.copyAPIBtn.addEventListener('click', () => this.copyToClipboard('api'));
         
@@ -92,7 +90,7 @@ class AudioFileBrowser {
         }
     }
     
-    async copyRowData() {
+    async copyAndSave() {
         try {
             // Collect background noise checkboxes
             const noises = [];
@@ -101,46 +99,107 @@ class AudioFileBrowser {
             if (document.getElementById('annNoiseTraffic').checked) noises.push('Traffic');
             if (document.getElementById('annNoiseEcho').checked) noises.push('Echo');
             
-            // Get all form values in the order they should appear in Google Sheets
+            const filename = document.getElementById('annFilename').value;
+            
+            if (!filename) {
+                this.annotationStatus.textContent = 'No file selected';
+                this.annotationStatus.className = 'annotation-status error';
+                return;
+            }
+            
+            // Prepare data for both copy and save
+            const refCorrect = document.getElementById('annRefCorrect').checked ? 'yes' : 'no';
+            const modelCorrect = document.getElementById('annModelCorrect').checked ? 'yes' : 'no';
+            const idealTranscript = document.getElementById('annIdealTranscript').value || '';
+            const properNoun = document.getElementById('annProperNoun').checked ? 'yes' : 'no';
+            const accentVariation = document.getElementById('annAccentVariation').checked ? 'yes' : 'no';
+            const numericDate = document.getElementById('annNumericDate').checked ? 'yes' : 'no';
+            const homophone = document.getElementById('annHomophone').checked ? 'yes' : 'no';
+            const foreignLanguage = document.getElementById('annForeignLanguage').checked ? 'yes' : 'no';
+            const gender = document.getElementById('annGender').value || '';
+            const backgroundNoise = noises.length > 0 ? noises.join(', ') : 'None';
+            const audioQuality = document.getElementById('annAudioQuality').value || '';
+            const notes = document.getElementById('annNotes').value || '';
+            
+            // 1. Copy to clipboard for Google Sheets
             const rowData = [
-                document.getElementById('annFilename').value || '',
+                filename,
                 document.getElementById('annDuration').value || '',
                 this.referenceContent.textContent || '',
                 this.transcriptContent.textContent || '',
-                document.getElementById('annRefCorrect').checked ? 'yes' : 'no',
-                document.getElementById('annModelCorrect').checked ? 'yes' : 'no',
-                document.getElementById('annIdealTranscript').value || '',
-                document.getElementById('annProperNoun').checked ? 'yes' : 'no',
-                document.getElementById('annAccentVariation').checked ? 'yes' : 'no',
-                document.getElementById('annNumericDate').checked ? 'yes' : 'no',
-                document.getElementById('annHomophone').checked ? 'yes' : 'no',
-                document.getElementById('annForeignLanguage').checked ? 'yes' : 'no',
-                document.getElementById('annGender').value || '',
-                noises.length > 0 ? noises.join(', ') : 'None',
-                document.getElementById('annAudioQuality').value || '',
-                document.getElementById('annNotes').value || ''
+                refCorrect,
+                modelCorrect,
+                idealTranscript,
+                properNoun,
+                accentVariation,
+                numericDate,
+                homophone,
+                foreignLanguage,
+                gender,
+                backgroundNoise,
+                audioQuality,
+                notes
             ];
             
-            // Join with tabs for Google Sheets paste
             const tsvData = rowData.join('\t');
-            
             await navigator.clipboard.writeText(tsvData);
             
-            // Visual feedback
-            const originalText = this.copyRowDataBtn.textContent;
-            this.copyRowDataBtn.textContent = '✓ Copied!';
-            this.copyRowDataBtn.style.background = '#218838';
+            // 2. Save annotation to server
+            const annotation = {
+                filename,
+                duration: document.getElementById('annDuration').value,
+                refCorrect,
+                modelCorrect,
+                idealTranscript,
+                properNoun,
+                accentVariation,
+                numericDate,
+                homophone,
+                foreignLanguage,
+                gender,
+                backgroundNoise,
+                audioQuality,
+                notes
+            };
             
-            setTimeout(() => {
-                this.copyRowDataBtn.textContent = originalText;
-                this.copyRowDataBtn.style.background = '';
-            }, 2000);
+            this.annotationStatus.textContent = 'Copying & Saving...';
+            this.annotationStatus.className = 'annotation-status';
+            
+            const response = await fetch('/api/annotation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-session-id': this.sessionId
+                },
+                body: JSON.stringify(annotation)
+            });
+            
+            if (response.ok) {
+                // Visual feedback
+                const originalText = this.copyAndSaveBtn.textContent;
+                this.copyAndSaveBtn.textContent = '✓ Copied & Saved!';
+                this.copyAndSaveBtn.style.background = '#218838';
+                
+                this.annotationStatus.textContent = 'Copied to clipboard & saved!';
+                this.annotationStatus.className = 'annotation-status success';
+                
+                setTimeout(() => {
+                    this.copyAndSaveBtn.textContent = originalText;
+                    this.copyAndSaveBtn.style.background = '';
+                    this.annotationStatus.textContent = '';
+                }, 3000);
+            } else {
+                throw new Error('Failed to save annotation');
+            }
             
         } catch (error) {
-            console.error('Failed to copy row data:', error);
-            this.copyRowDataBtn.textContent = '✗ Failed';
+            console.error('Failed to copy and save:', error);
+            this.copyAndSaveBtn.textContent = '✗ Failed';
+            this.annotationStatus.textContent = 'Error: ' + error.message;
+            this.annotationStatus.className = 'annotation-status error';
+            
             setTimeout(() => {
-                this.copyRowDataBtn.textContent = '📋 Copy Row Data';
+                this.copyAndSaveBtn.textContent = '📋 Copy & Save';
             }, 2000);
         }
     }
@@ -325,7 +384,7 @@ class AudioFileBrowser {
                 })
             ]);
             
-            // Handle API transcript
+            // Handle Model transcript
             if (apiResponse.ok) {
                 const transcript = await apiResponse.json();
                 this.currentTranscript = transcript;
@@ -333,9 +392,9 @@ class AudioFileBrowser {
                 this.transcriptionStatus.textContent = 'Transcripts loaded';
                 this.transcriptionStatus.className = 'transcription-status success';
             } else {
-                this.transcriptContent.textContent = 'API transcript not available';
+                this.transcriptContent.textContent = 'Model transcript not available';
                 this.currentTranscript = null;
-                this.transcriptionStatus.textContent = 'API transcript not found';
+                this.transcriptionStatus.textContent = 'Model transcript not found';
                 this.transcriptionStatus.className = 'transcription-status error';
             }
             

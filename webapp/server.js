@@ -15,6 +15,22 @@ try {
 const app = express();
 const { AUDIO_BASE_DIR, TRANSCRIPTION_DIR, PORT, SESSION_TIMEOUT, DEBUG } = config;
 
+// Trust proxy for Cloudflare tunnel
+app.set('trust proxy', true);
+
+// CORS headers for Cloudflare tunnel
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, x-session-id');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 // Load reference data from CSV
 const referenceData = new Map();
 const csvPath = path.join(__dirname, 'webapp_reference.csv');
@@ -221,16 +237,27 @@ app.get('/api/browse', requireAuth, (req, res) => {
     const windowsPath = relativePath.replace(/\//g, path.sep);
     const fullPath = path.resolve(AUDIO_BASE_DIR, windowsPath);
 
+    if (DEBUG) {
+        console.log('Browse request:', {
+            relativePath,
+            windowsPath,
+            fullPath,
+            baseDir: AUDIO_BASE_DIR
+        });
+    }
+
     try {
         const normalizedBase = path.resolve(AUDIO_BASE_DIR);
         const normalizedFull = path.resolve(fullPath);
 
         if (!normalizedFull.startsWith(normalizedBase)) {
-            return res.status(403).json({ error: 'Access denied' });
+            console.error('Access denied:', { normalizedFull, normalizedBase });
+            return res.status(403).json({ error: 'Access denied', details: 'Path outside base directory' });
         }
 
         if (!fs.existsSync(fullPath)) {
-            return res.status(404).json({ error: 'Directory not found' });
+            console.error('Directory not found:', fullPath);
+            return res.status(404).json({ error: 'Directory not found', path: fullPath });
         }
 
         const items = fs.readdirSync(fullPath, { withFileTypes: true });
