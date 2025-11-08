@@ -428,6 +428,9 @@ class AudioFileBrowser {
                 this.referenceContent.textContent = reference.sentence || 'No reference available';
                 this.displayMetadata(reference);
                 this.populateAnnotationForm(item.name, reference);
+                
+                // Highlight differences after both transcripts are loaded
+                this.highlightDifferences();
             } else {
                 this.referenceContent.textContent = 'Reference transcript not available';
                 this.currentReference = null;
@@ -508,42 +511,97 @@ class AudioFileBrowser {
     }
     
     tokenize(text) {
-        // Split into words while preserving spaces and punctuation
-        return text.match(/\S+|\s+/g) || [];
+        // Split into words, handling Bengali text properly
+        // Match sequences of non-whitespace characters or whitespace
+        const tokens = [];
+        let current = '';
+        
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            if (/\s/.test(char)) {
+                if (current) {
+                    tokens.push(current);
+                    current = '';
+                }
+                tokens.push(char);
+            } else {
+                current += char;
+            }
+        }
+        
+        if (current) {
+            tokens.push(current);
+        }
+        
+        return tokens;
     }
     
     computeDiff(arr1, arr2) {
-        // Simple diff algorithm (similar to Myers diff)
+        // Improved diff algorithm
         const result = [];
         let i = 0, j = 0;
         
         while (i < arr1.length || j < arr2.length) {
-            if (i >= arr1.length) {
-                // Rest are insertions
-                result.push({ type: 'insert', value: arr2[j] });
-                j++;
-            } else if (j >= arr2.length) {
-                // Rest are deletions (skip in model view)
-                i++;
-            } else if (arr1[i] === arr2[j]) {
-                // Equal
+            // Skip whitespace matching
+            if (i < arr1.length && j < arr2.length && /^\s+$/.test(arr1[i]) && /^\s+$/.test(arr2[j])) {
                 result.push({ type: 'equal', value: arr2[j] });
                 i++;
                 j++;
-            } else {
-                // Try to find if it's a replacement or insertion/deletion
-                const nextMatchInRef = arr1.indexOf(arr2[j], i + 1);
-                const nextMatchInModel = arr2.indexOf(arr1[i], j + 1);
-                
-                if (nextMatchInRef !== -1 && (nextMatchInModel === -1 || nextMatchInRef < nextMatchInModel)) {
-                    // Deletion in model (skip)
-                    i++;
-                } else if (nextMatchInModel !== -1) {
-                    // Insertion in model
+                continue;
+            }
+            
+            if (i >= arr1.length) {
+                // Rest are insertions
+                if (!/^\s+$/.test(arr2[j])) {
                     result.push({ type: 'insert', value: arr2[j] });
-                    j++;
                 } else {
-                    // Replacement
+                    result.push({ type: 'equal', value: arr2[j] });
+                }
+                j++;
+            } else if (j >= arr2.length) {
+                // Rest are deletions (skip in model view, but count them)
+                i++;
+            } else if (arr1[i] === arr2[j]) {
+                // Exact match
+                result.push({ type: 'equal', value: arr2[j] });
+                i++;
+                j++;
+            } else if (/^\s+$/.test(arr1[i])) {
+                // Reference has space, model doesn't - skip reference space
+                i++;
+            } else if (/^\s+$/.test(arr2[j])) {
+                // Model has space, reference doesn't - keep model space
+                result.push({ type: 'equal', value: arr2[j] });
+                j++;
+            } else {
+                // Different non-whitespace tokens
+                // Look ahead to see if this is insertion, deletion, or replacement
+                let foundMatch = false;
+                
+                // Check next few tokens for a match
+                for (let k = 1; k <= 3 && j + k < arr2.length; k++) {
+                    if (arr1[i] === arr2[j + k]) {
+                        // Found match ahead in model - current is insertion
+                        result.push({ type: 'insert', value: arr2[j] });
+                        j++;
+                        foundMatch = true;
+                        break;
+                    }
+                }
+                
+                if (!foundMatch) {
+                    for (let k = 1; k <= 3 && i + k < arr1.length; k++) {
+                        if (arr1[i + k] === arr2[j]) {
+                            // Found match ahead in reference - current is deletion
+                            i++;
+                            foundMatch = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!foundMatch) {
+                    // No match found nearby - it's a replacement
                     result.push({ type: 'replace', value: arr2[j] });
                     i++;
                     j++;
