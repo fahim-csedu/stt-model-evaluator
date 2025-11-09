@@ -119,6 +119,7 @@ main {
     flex: 1;
     overflow-y: auto;
     padding: 10px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .file-item {
@@ -184,6 +185,7 @@ main {
     gap: 15px;
     height: 100%;
     font-size: 16px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .audio-player {
@@ -285,6 +287,7 @@ main {
     font-size: 20px;
     line-height: 1.8;
     direction: ltr;
+    -webkit-overflow-scrolling: touch;
 }
 
 .reference-transcript {
@@ -394,6 +397,7 @@ main {
     padding: 20px;
     max-height: 500px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 .form-row {
@@ -588,4 +592,82 @@ main {
 .file-metadata .metadata-label {
     font-weight: 600;
     color: #555;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .content-area {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+    
+    .file-browser {
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+        max-height: 40vh;
+    }
+    
+    .player-area {
+        padding: 15px;
+        padding-bottom: 40px;
+    }
+    
+    .player-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .player-controls audio {
+        width: 100%;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .error-categories {
+        grid-template-columns: 1fr;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .file-item {
+        padding: 15px 12px;
+        touch-action: manipulation;
+    }
+    
+    .file-item[data-type="folder"]::after {
+        content: "→";
+        margin-left: auto;
+        font-size: 20px;
+        color: #667eea;
+    }
+    
+    .transcript-section {
+        max-height: 200px;
+    }
+    
+    .annotation-form {
+        max-height: none;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .radio-label,
+    .checkbox-label {
+        font-size: 16px;
+    }
 }

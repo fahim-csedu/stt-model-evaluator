@@ -14,8 +14,12 @@ class AudioFileBrowser {
         this.selectedFile = null;
         this.currentTranscript = null;
         this.currentReference = null;
+        this.mismatchedWords = [];
         this.sessionId = localStorage.getItem('audioFileBrowserSession');
         this.username = localStorage.getItem('audioFileBrowserUsername');
+        this.lastTapTime = 0;
+        this.lastTapTarget = null;
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
         // Clear any saved paths from previous sessions
         localStorage.removeItem('audioFileBrowserLastPath');
@@ -184,7 +188,8 @@ class AudioFileBrowser {
                 gender,
                 backgroundNoise,
                 audioQuality,
-                notes
+                notes,
+                mismatched_words: this.mismatchedWords
             };
             
             this.annotationStatus.textContent = 'Copying & Saving...';
@@ -308,8 +313,31 @@ class AudioFileBrowser {
             fileItem.appendChild(icon);
             fileItem.appendChild(name);
             
-            fileItem.addEventListener('click', () => this.selectFile(fileItem, item));
-            fileItem.addEventListener('dblclick', () => this.activateFile(item));
+            // Mobile-friendly: single tap to open folders, double tap for audio
+            if (this.isMobile) {
+                fileItem.addEventListener('click', (e) => {
+                    const now = Date.now();
+                    const timeSinceLastTap = now - this.lastTapTime;
+                    
+                    if (item.type === 'folder') {
+                        // Single tap opens folders on mobile
+                        this.activateFile(item);
+                    } else {
+                        // Double tap for audio files
+                        if (timeSinceLastTap < 300 && this.lastTapTarget === fileItem) {
+                            this.activateFile(item);
+                        } else {
+                            this.selectFile(fileItem, item);
+                        }
+                        this.lastTapTime = now;
+                        this.lastTapTarget = fileItem;
+                    }
+                });
+            } else {
+                // Desktop: click to select, double-click to activate
+                fileItem.addEventListener('click', () => this.selectFile(fileItem, item));
+                fileItem.addEventListener('dblclick', () => this.activateFile(item));
+            }
             
             this.fileList.appendChild(fileItem);
         });
@@ -596,6 +624,7 @@ class AudioFileBrowser {
         if (!referenceText || !modelText || 
             referenceText === 'Select an audio file to view the reference transcript') {
             this.transcriptContent.textContent = modelText;
+            this.mismatchedWords = [];
             return;
         }
         
@@ -603,6 +632,7 @@ class AudioFileBrowser {
         const modelTokens = this.tokenizeWordsPreserveWhitespace(modelText);
         
         const isSpace = t => /^\s+$/u.test(t);
+        const isPunctuationOnly = (str) => /^[\p{P}\p{S}]+$/u.test(str);
         const areEq = (x, y) => {
             if (isSpace(x) && isSpace(y)) return true;
             if (isSpace(x) || isSpace(y)) return false;
@@ -613,6 +643,7 @@ class AudioFileBrowser {
         
         let html = '';
         const mismatches = [];
+        const mismatchedWordsArray = [];
         
         for (const op of ops) {
             if (op.type === 'equal') {
@@ -620,25 +651,41 @@ class AudioFileBrowser {
                 html += this.escapeHtml(token);
             } else if (op.type === 'insert') {
                 if (!isSpace(op.b)) {
+                    const word = op.b.trim();
                     html += `<span class="diff-insert" title="Added in model">${this.escapeHtml(op.b)}</span>`;
-                    mismatches.push(`[+] ${op.b.trim()}`);
+                    if (!isPunctuationOnly(word)) {
+                        mismatches.push(`[+] ${word}`);
+                        mismatchedWordsArray.push({ original: '', api: word });
+                    }
                 } else {
                     html += this.escapeHtml(op.b);
                 }
             } else if (op.type === 'delete') {
                 // Skip in model view but track for notes
                 if (!isSpace(op.a)) {
-                    mismatches.push(`[-] ${op.a.trim()}`);
+                    const word = op.a.trim();
+                    if (!isPunctuationOnly(word)) {
+                        mismatches.push(`[-] ${word}`);
+                        mismatchedWordsArray.push({ original: word, api: '' });
+                    }
                 }
             } else if (op.type === 'replace') {
                 html += `<span class="diff-replace" title="Different from reference">${this.innerReplaceMarkup(op.a, op.b)}</span>`;
                 if (!isSpace(op.a) && !isSpace(op.b)) {
-                    mismatches.push(`[${op.a.trim()} → ${op.b.trim()}]`);
+                    const origWord = op.a.trim();
+                    const apiWord = op.b.trim();
+                    if (!isPunctuationOnly(origWord) && !isPunctuationOnly(apiWord)) {
+                        mismatches.push(`[${origWord} → ${apiWord}]`);
+                        mismatchedWordsArray.push({ original: origWord, api: apiWord });
+                    }
                 }
             }
         }
         
         this.transcriptContent.innerHTML = html || this.escapeHtml(modelText);
+        
+        // Store structured mismatched words
+        this.mismatchedWords = mismatchedWordsArray;
         
         // Update notes field with mismatched words only if no existing notes
         if (!hasExistingNotes) {
@@ -650,9 +697,9 @@ class AudioFileBrowser {
         const notesField = document.getElementById('annNotes');
         if (!notesField) return;
         
-        // Create mismatches section
+        // Create mismatches section with better formatting
         if (mismatches.length > 0) {
-            notesField.value = `Mismatched words: ${mismatches.join(', ')}`;
+            notesField.value = `Mismatched words:\n${mismatches.join('\n')}`;
         } else {
             notesField.value = '';
         }
