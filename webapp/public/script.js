@@ -609,22 +609,61 @@ class AudioFileBrowser {
         const ops = this.lcsDiff(refTokens, modelTokens, areEq);
         
         let html = '';
+        const mismatches = [];
+        
         for (const op of ops) {
             if (op.type === 'equal') {
                 const token = op.b ?? op.a;
                 html += this.escapeHtml(token);
             } else if (op.type === 'insert') {
-                html += isSpace(op.b)
-                    ? this.escapeHtml(op.b)
-                    : `<span class="diff-insert" title="Added in model">${this.escapeHtml(op.b)}</span>`;
+                if (!isSpace(op.b)) {
+                    html += `<span class="diff-insert" title="Added in model">${this.escapeHtml(op.b)}</span>`;
+                    mismatches.push(`[+] ${op.b.trim()}`);
+                } else {
+                    html += this.escapeHtml(op.b);
+                }
             } else if (op.type === 'delete') {
-                // Skip in model view
+                // Skip in model view but track for notes
+                if (!isSpace(op.a)) {
+                    mismatches.push(`[-] ${op.a.trim()}`);
+                }
             } else if (op.type === 'replace') {
                 html += `<span class="diff-replace" title="Different from reference">${this.innerReplaceMarkup(op.a, op.b)}</span>`;
+                if (!isSpace(op.a) && !isSpace(op.b)) {
+                    mismatches.push(`[${op.a.trim()} → ${op.b.trim()}]`);
+                }
             }
         }
         
         this.transcriptContent.innerHTML = html || this.escapeHtml(modelText);
+        
+        // Update notes field with mismatched words
+        this.updateNotesWithMismatches(mismatches);
+    }
+    
+    updateNotesWithMismatches(mismatches) {
+        const notesField = document.getElementById('annNotes');
+        if (!notesField) return;
+        
+        // Get existing notes
+        const existingNotes = notesField.value.trim();
+        
+        // Create mismatches section
+        let mismatchText = '';
+        if (mismatches.length > 0) {
+            mismatchText = `Mismatched words: ${mismatches.join(', ')}`;
+        }
+        
+        // If there are existing notes that don't start with "Mismatched words:", preserve them
+        if (existingNotes && !existingNotes.startsWith('Mismatched words:')) {
+            // Append mismatches to existing notes
+            if (mismatchText) {
+                notesField.value = `${mismatchText}\n\n${existingNotes}`;
+            }
+        } else {
+            // Replace old mismatches or set new ones
+            notesField.value = mismatchText;
+        }
     }
     
     escapeHtml(s) {
