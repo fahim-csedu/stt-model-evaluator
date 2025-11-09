@@ -428,9 +428,6 @@ class AudioFileBrowser {
                 this.referenceContent.textContent = reference.sentence || 'No reference available';
                 this.displayMetadata(reference);
                 this.populateAnnotationForm(item.name, reference);
-                
-                // Highlight differences after both transcripts are loaded
-                this.highlightDifferences();
             } else {
                 this.referenceContent.textContent = 'Reference transcript not available';
                 this.currentReference = null;
@@ -438,12 +435,18 @@ class AudioFileBrowser {
             }
             
             // Handle existing annotation
+            let hasExistingNotes = false;
             if (annResponse.ok) {
                 const annotation = await annResponse.json();
                 this.loadAnnotation(annotation);
+                hasExistingNotes = annotation.notes && annotation.notes.trim().length > 0;
             } else {
                 this.clearAnnotationForm();
             }
+            
+            // Highlight differences after both transcripts are loaded
+            // This will also populate notes with mismatches if no existing notes
+            this.highlightDifferences(hasExistingNotes);
             
         } catch (error) {
             console.error('Error loading audio file:', error);
@@ -586,7 +589,7 @@ class AudioFileBrowser {
         return out;
     }
     
-    highlightDifferences() {
+    highlightDifferences(hasExistingNotes = false) {
         const referenceText = (this.referenceContent.textContent || '').trim();
         const modelText = (this.modelTranscriptText || '').trim();
         
@@ -637,32 +640,21 @@ class AudioFileBrowser {
         
         this.transcriptContent.innerHTML = html || this.escapeHtml(modelText);
         
-        // Update notes field with mismatched words
-        this.updateNotesWithMismatches(mismatches);
+        // Update notes field with mismatched words only if no existing notes
+        if (!hasExistingNotes) {
+            this.updateNotesWithMismatches(mismatches);
+        }
     }
     
     updateNotesWithMismatches(mismatches) {
         const notesField = document.getElementById('annNotes');
         if (!notesField) return;
         
-        // Get existing notes
-        const existingNotes = notesField.value.trim();
-        
         // Create mismatches section
-        let mismatchText = '';
         if (mismatches.length > 0) {
-            mismatchText = `Mismatched words: ${mismatches.join(', ')}`;
-        }
-        
-        // If there are existing notes that don't start with "Mismatched words:", preserve them
-        if (existingNotes && !existingNotes.startsWith('Mismatched words:')) {
-            // Append mismatches to existing notes
-            if (mismatchText) {
-                notesField.value = `${mismatchText}\n\n${existingNotes}`;
-            }
+            notesField.value = `Mismatched words: ${mismatches.join(', ')}`;
         } else {
-            // Replace old mismatches or set new ones
-            notesField.value = mismatchText;
+            notesField.value = '';
         }
     }
     
