@@ -71,7 +71,7 @@ main {
 .content-area {
     display: grid;
     grid-template-columns: 400px 1fr;
-    height: 100%;
+    min-height: 100%;
     gap: 0;
 }
 
@@ -157,6 +157,18 @@ main {
     font-size: 16px;
 }
 
+.file-item[data-type="folder"] {
+    font-weight: 500;
+}
+
+.file-item[data-type="folder"]::after {
+    content: "→";
+    margin-left: auto;
+    font-size: 18px;
+    color: #667eea;
+    opacity: 0.7;
+}
+
 .file-count {
     margin-left: 10px;
     font-size: 12px;
@@ -183,7 +195,6 @@ main {
     padding: 20px;
     padding-bottom: 60px;
     gap: 15px;
-    height: 100%;
     font-size: 16px;
     -webkit-overflow-scrolling: touch;
 }
@@ -395,9 +406,7 @@ main {
 
 .annotation-form {
     padding: 20px;
-    max-height: 500px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    overflow-y: visible;
 }
 
 .form-row {
@@ -646,10 +655,7 @@ main {
     }
     
     .file-item[data-type="folder"]::after {
-        content: "→";
-        margin-left: auto;
         font-size: 20px;
-        color: #667eea;
     }
     
     .transcript-section {

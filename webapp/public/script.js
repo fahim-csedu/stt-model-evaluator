@@ -313,29 +313,20 @@ class AudioFileBrowser {
             fileItem.appendChild(icon);
             fileItem.appendChild(name);
             
-            // Mobile-friendly: single tap to open folders, double tap for audio
-            if (this.isMobile) {
-                fileItem.addEventListener('click', (e) => {
-                    const now = Date.now();
-                    const timeSinceLastTap = now - this.lastTapTime;
-                    
-                    if (item.type === 'folder') {
-                        // Single tap opens folders on mobile
-                        this.activateFile(item);
-                    } else {
-                        // Double tap for audio files
-                        if (timeSinceLastTap < 300 && this.lastTapTarget === fileItem) {
-                            this.activateFile(item);
-                        } else {
-                            this.selectFile(fileItem, item);
-                        }
-                        this.lastTapTime = now;
-                        this.lastTapTarget = fileItem;
-                    }
-                });
-            } else {
-                // Desktop: click to select, double-click to activate
-                fileItem.addEventListener('click', () => this.selectFile(fileItem, item));
+            // Single click to open folders (easier for everyone)
+            // Double click for audio files
+            fileItem.addEventListener('click', (e) => {
+                if (item.type === 'folder') {
+                    // Single click opens folders
+                    this.activateFile(item);
+                } else {
+                    // For audio: select on first click
+                    this.selectFile(fileItem, item);
+                }
+            });
+            
+            // Double-click for audio files
+            if (item.type === 'audio') {
                 fileItem.addEventListener('dblclick', () => this.activateFile(item));
             }
             
