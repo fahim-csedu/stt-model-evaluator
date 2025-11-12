@@ -688,9 +688,9 @@ class AudioFileBrowser {
         const notesField = document.getElementById('annNotes');
         if (!notesField) return;
         
-        // Create mismatches section with better formatting
+        // Create mismatches section - join with space to keep in single cell
         if (mismatches.length > 0) {
-            notesField.value = `Mismatched words:\n${mismatches.join('\n')}`;
+            notesField.value = `Mismatched words: ${mismatches.join(' ')}`;
         } else {
             notesField.value = '';
         }
