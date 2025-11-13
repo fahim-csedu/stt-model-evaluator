@@ -54,3 +54,6 @@ wheels/
 
 # API response cache (optional - uncomment if you don't want to track these)
 # api_response/
+
+# Webapp annotations
+webapp/annotations/
