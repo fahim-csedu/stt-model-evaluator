@@ -1,6 +1,10 @@
 """
 Batch transcription script for STT Model Evaluator
 Processes all audio files and saves transcripts in the same folder
+
+Usage:
+    python batch_transcribe_v2.py              # Process regular folders (excluding 'remaining')
+    python batch_transcribe_v2.py --remaining  # Process only 'remaining' folder
 """
 
 import base64
@@ -9,6 +13,7 @@ import socketio
 import time
 import csv
 import os
+import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -43,41 +48,72 @@ def get_audio_duration_estimate(audio_path):
         return None
 
 
-def find_all_audio_files(base_dir):
-    """Recursively find all audio files in the directory, excluding 'remaining' folder"""
+def find_all_audio_files(base_dir, process_remaining=False):
+    """Recursively find all audio files in the directory
+    
+    Args:
+        base_dir: Base directory to search
+        process_remaining: If True, only process 'remaining' folder. If False, exclude it.
+    """
     audio_files = []
     base_path = Path(base_dir)
     
-    # Get all subdirectories in base_dir, excluding 'remaining'
-    subdirs = [d for d in base_path.iterdir() if d.is_dir() and d.name.lower() != 'remaining']
-    
-    # Process each subdirectory
-    for subdir in subdirs:
-        for ext in AUDIO_EXTENSIONS:
-            audio_files.extend(subdir.rglob(f'*{ext}'))
+    if process_remaining:
+        # Only process 'remaining' folder
+        remaining_dir = base_path / 'remaining'
+        if remaining_dir.exists() and remaining_dir.is_dir():
+            for ext in AUDIO_EXTENSIONS:
+                audio_files.extend(remaining_dir.rglob(f'*{ext}'))
+    else:
+        # Get all subdirectories in base_dir, excluding 'remaining'
+        subdirs = [d for d in base_path.iterdir() if d.is_dir() and d.name.lower() != 'remaining']
+        
+        # Process each subdirectory
+        for subdir in subdirs:
+            for ext in AUDIO_EXTENSIONS:
+                audio_files.extend(subdir.rglob(f'*{ext}'))
     
     return sorted(audio_files)
 
 
-def get_existing_transcripts(base_dir):
-    """Get set of audio files that already have transcripts, excluding 'remaining' folder"""
+def get_existing_transcripts(base_dir, process_remaining=False):
+    """Get set of audio files that already have transcripts
+    
+    Args:
+        base_dir: Base directory to search
+        process_remaining: If True, only check 'remaining' folder. If False, exclude it.
+    """
     existing = set()
     base_path = Path(base_dir)
     
-    # Get all subdirectories in base_dir, excluding 'remaining'
-    subdirs = [d for d in base_path.iterdir() if d.is_dir() and d.name.lower() != 'remaining']
-    
-    # Find all JSON files in subdirectories
-    for subdir in subdirs:
-        for json_file in subdir.rglob('*.json'):
-            # Get the corresponding audio file path (without extension)
-            audio_base = json_file.with_suffix('')
-            # Check if any audio file with this base name exists
-            for ext in AUDIO_EXTENSIONS:
-                audio_file = audio_base.with_suffix(ext)
-                if audio_file.exists():
-                    existing.add(str(audio_file))
-                    break
+    if process_remaining:
+        # Only check 'remaining' folder
+        remaining_dir = base_path / 'remaining'
+        if remaining_dir.exists() and remaining_dir.is_dir():
+            for json_file in remaining_dir.rglob('*.json'):
+                # Get the corresponding audio file path (without extension)
+                audio_base = json_file.with_suffix('')
+                # Check if any audio file with this base name exists
+                for ext in AUDIO_EXTENSIONS:
+                    audio_file = audio_base.with_suffix(ext)
+                    if audio_file.exists():
+                        existing.add(str(audio_file))
+                        break
+    else:
+        # Get all subdirectories in base_dir, excluding 'remaining'
+        subdirs = [d for d in base_path.iterdir() if d.is_dir() and d.name.lower() != 'remaining']
+        
+        # Find all JSON files in subdirectories
+        for subdir in subdirs:
+            for json_file in subdir.rglob('*.json'):
+                # Get the corresponding audio file path (without extension)
+                audio_base = json_file.with_suffix('')
+                # Check if any audio file with this base name exists
+                for ext in AUDIO_EXTENSIONS:
+                    audio_file = audio_base.with_suffix(ext)
+                    if audio_file.exists():
+                        existing.add(str(audio_file))
+                        break
     
     return existing
 
@@ -202,23 +238,39 @@ def append_to_csv(csv_path, row_data):
         writer.writerow(row_data)
 
 
-def process_audio_files():
-    """Main processing function"""
+def process_audio_files(process_remaining=False):
+    """Main processing function
+    
+    Args:
+        process_remaining: If True, process only 'remaining' folder with separate CSV output
+    """
+    # Determine CSV output path
+    csv_output = CSV_OUTPUT_PATH
+    if process_remaining:
+        # Generate separate CSV for remaining folder
+        csv_dir = Path(CSV_OUTPUT_PATH).parent
+        csv_name = Path(CSV_OUTPUT_PATH).stem
+        csv_ext = Path(CSV_OUTPUT_PATH).suffix
+        csv_output = str(csv_dir / f"{csv_name}_remaining{csv_ext}")
+    
+    folder_type = "'remaining' folder only" if process_remaining else "all folders (excluding 'remaining')"
+    
     print("=" * 80)
     print("STT Batch Transcription Script")
     print("=" * 80)
+    print(f"Processing: {folder_type}")
     print(f"Audio directory: {AUDIO_BASE_DIR}")
-    print(f"CSV output: {CSV_OUTPUT_PATH}")
+    print(f"CSV output: {csv_output}")
     print(f"API endpoint: {SOCKET_URL}")
     print("=" * 80)
     
     # Find all audio files
     print("\nScanning for audio files...")
-    audio_files = find_all_audio_files(AUDIO_BASE_DIR)
+    audio_files = find_all_audio_files(AUDIO_BASE_DIR, process_remaining)
     print(f"Found {len(audio_files)} audio files")
     
     # Get existing transcripts
-    existing_transcripts = get_existing_transcripts(AUDIO_BASE_DIR)
+    existing_transcripts = get_existing_transcripts(AUDIO_BASE_DIR, process_remaining)
     print(f"Found {len(existing_transcripts)} existing transcripts")
     
     # Filter out already processed files
@@ -275,7 +327,7 @@ def process_audio_files():
                     'api_response_time_seconds': f"{result['api_response_time']:.2f}" if result['api_response_time'] else 'N/A'
                 }
                 
-                append_to_csv(CSV_OUTPUT_PATH, csv_row)
+                append_to_csv(csv_output, csv_row)
                 print(f"  ✓ Updated CSV")
                 print(f"  ✓ Transcript: {transcript[:100]}..." if len(transcript) > 100 else f"  ✓ Transcript: {transcript}")
                 
@@ -294,7 +346,7 @@ def process_audio_files():
                     'audio_length_seconds': 'N/A',
                     'api_response_time_seconds': 'N/A'
                 }
-                append_to_csv(CSV_OUTPUT_PATH, csv_row)
+                append_to_csv(csv_output, csv_row)
             
             # Small delay between requests
             time.sleep(REQUEST_DELAY)
@@ -311,7 +363,7 @@ def process_audio_files():
                 'audio_length_seconds': 'N/A',
                 'api_response_time_seconds': 'N/A'
             }
-            append_to_csv(CSV_OUTPUT_PATH, csv_row)
+            append_to_csv(csv_output, csv_row)
     
     # Summary
     print("\n" + "=" * 80)
@@ -320,13 +372,16 @@ def process_audio_files():
     print(f"Total processed: {len(files_to_process)}")
     print(f"Successful: {success_count}")
     print(f"Failed: {error_count}")
-    print(f"CSV output: {CSV_OUTPUT_PATH}")
+    print(f"CSV output: {csv_output}")
     print("=" * 80)
 
 
 if __name__ == "__main__":
+    # Check command line arguments
+    process_remaining = '--remaining' in sys.argv or '-r' in sys.argv
+    
     try:
-        process_audio_files()
+        process_audio_files(process_remaining=process_remaining)
     except KeyboardInterrupt:
         print("\n\nProcess interrupted by user")
         print("Progress has been saved to CSV")
