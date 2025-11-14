@@ -70,24 +70,26 @@ function loadReferenceData() {
             
             const values = parseCSVLine(line);
             
-            // WER: Column A (index 0) = filename, Column B (index 1) = reference, Column C (index 2) = model output
+            // bntts_wer_error: Column A to C (index 0-2) = filename, reference, model
             if (values.length > 2 && values[0]) {
-                referenceData.set(values[0], {
+                const key = `bntts_wer_error/${values[0]}`;
+                referenceData.set(key, {
                     filename: values[0],
                     sentence: values[1] || '',
                     modelTranscript: values[2] || '',
-                    source: 'bntts_wer'
+                    folder: 'bntts_wer_error'
                 });
                 totalLoaded++;
             }
             
-            // CER: Column E (index 4) = filename, Column F (index 5) = reference, Column G (index 6) = model output
+            // bntts_cer_error: Column E to G (index 4-6) = filename, reference, model
             if (values.length > 6 && values[4]) {
-                referenceData.set(values[4], {
+                const key = `bntts_cer_error/${values[4]}`;
+                referenceData.set(key, {
                     filename: values[4],
                     sentence: values[5] || '',
                     modelTranscript: values[6] || '',
-                    source: 'bntts_cer'
+                    folder: 'bntts_cer_error'
                 });
                 totalLoaded++;
             }
@@ -109,24 +111,26 @@ function loadReferenceData() {
             
             const values = parseCSVLine(line);
             
-            // WER: Column A (index 0) = filename, Column B (index 1) = reference, Column C (index 2) = model output
+            // commonvoice_wer_error: Column A to C (index 0-2) = filename, reference, model
             if (values.length > 2 && values[0]) {
-                referenceData.set(values[0], {
+                const key = `commonvoice_wer_error/${values[0]}`;
+                referenceData.set(key, {
                     filename: values[0],
                     sentence: values[1] || '',
                     modelTranscript: values[2] || '',
-                    source: 'commonvoice_wer'
+                    folder: 'commonvoice_wer_error'
                 });
                 totalLoaded++;
             }
             
-            // CER: Column E (index 4) = filename, Column F (index 5) = reference, Column G (index 6) = model output
+            // commonvoice_cer_error: Column E to G (index 4-6) = filename, reference, model
             if (values.length > 6 && values[4]) {
-                referenceData.set(values[4], {
+                const key = `commonvoice_cer_error/${values[4]}`;
+                referenceData.set(key, {
                     filename: values[4],
                     sentence: values[5] || '',
                     modelTranscript: values[6] || '',
-                    source: 'commonvoice_cer'
+                    folder: 'commonvoice_cer_error'
                 });
                 totalLoaded++;
             }
@@ -438,6 +442,7 @@ app.get('/api/transcript', requireAuth, async (req, res) => {
     }
 
     const decodedPath = decodeURIComponent(filePath);
+    const normalizedPath = normalizePath(decodedPath);
     const windowsPath = decodedPath.replace(/\//g, path.sep);
     const audioFullPath = path.resolve(AUDIO_BASE_DIR, windowsPath);
     
@@ -460,8 +465,9 @@ app.get('/api/transcript', requireAuth, async (req, res) => {
         }
     }
     
-    // Fall back to CSV data
-    const reference = referenceData.get(audioFileName);
+    // Fall back to CSV data using folder/filename as key
+    const pathWithoutExt = normalizedPath.replace(/\.(wav|mp3|flac|m4a|ogg)$/i, '');
+    const reference = referenceData.get(pathWithoutExt);
     if (reference && reference.modelTranscript) {
         return res.json({ transcript: reference.modelTranscript });
     }
@@ -477,9 +483,10 @@ app.get('/api/reference', requireAuth, async (req, res) => {
     }
 
     const decodedPath = decodeURIComponent(filePath);
-    const audioFileName = path.basename(decodedPath, path.extname(decodedPath));
+    const normalizedPath = normalizePath(decodedPath);
+    const pathWithoutExt = normalizedPath.replace(/\.(wav|mp3|flac|m4a|ogg)$/i, '');
     
-    const reference = referenceData.get(audioFileName);
+    const reference = referenceData.get(pathWithoutExt);
     
     if (reference) {
         return res.json(reference);
