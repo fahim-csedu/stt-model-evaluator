@@ -70,21 +70,23 @@ function loadReferenceData() {
             
             const values = parseCSVLine(line);
             
-            // Column A (index 0) = WER filename, Column B (index 1) = annotated text
-            // Column E (index 4) = CER filename, Column F (index 5) = annotated text
-            if (values.length > 1 && values[0]) {
+            // WER: Column A (index 0) = filename, Column B (index 1) = reference, Column C (index 2) = model output
+            if (values.length > 2 && values[0]) {
                 referenceData.set(values[0], {
                     filename: values[0],
                     sentence: values[1] || '',
+                    modelTranscript: values[2] || '',
                     source: 'bntts_wer'
                 });
                 totalLoaded++;
             }
             
-            if (values.length > 5 && values[4]) {
+            // CER: Column E (index 4) = filename, Column F (index 5) = reference, Column G (index 6) = model output
+            if (values.length > 6 && values[4]) {
                 referenceData.set(values[4], {
                     filename: values[4],
                     sentence: values[5] || '',
+                    modelTranscript: values[6] || '',
                     source: 'bntts_cer'
                 });
                 totalLoaded++;
@@ -107,21 +109,23 @@ function loadReferenceData() {
             
             const values = parseCSVLine(line);
             
-            // Column A (index 0) = WER filename, Column B (index 1) = annotated text
-            // Column E (index 4) = CER filename, Column F (index 5) = annotated text
-            if (values.length > 1 && values[0]) {
+            // WER: Column A (index 0) = filename, Column B (index 1) = reference, Column C (index 2) = model output
+            if (values.length > 2 && values[0]) {
                 referenceData.set(values[0], {
                     filename: values[0],
                     sentence: values[1] || '',
+                    modelTranscript: values[2] || '',
                     source: 'commonvoice_wer'
                 });
                 totalLoaded++;
             }
             
-            if (values.length > 5 && values[4]) {
+            // CER: Column E (index 4) = filename, Column F (index 5) = reference, Column G (index 6) = model output
+            if (values.length > 6 && values[4]) {
                 referenceData.set(values[4], {
                     filename: values[4],
                     sentence: values[5] || '',
+                    modelTranscript: values[6] || '',
                     source: 'commonvoice_cer'
                 });
                 totalLoaded++;
@@ -426,7 +430,7 @@ app.get('/api/absolutePath', requireAuth, (req, res) => {
     res.json({ absolutePath: normalizedPath });
 });
 
-// Get transcript from same folder as audio file
+// Get transcript from same folder as audio file or from CSV data
 app.get('/api/transcript', requireAuth, async (req, res) => {
     const filePath = req.query.file;
     if (!filePath) {
@@ -442,19 +446,27 @@ app.get('/api/transcript', requireAuth, async (req, res) => {
     const audioDir = path.dirname(audioFullPath);
     const jsonFullPath = path.join(audioDir, audioFileName + '.json');
 
-    // Check if JSON exists
+    // Check if JSON exists (for saved annotations)
     if (fs.existsSync(jsonFullPath)) {
         try {
             const content = fs.readFileSync(jsonFullPath, 'utf8');
             const jsonData = JSON.parse(content);
-            return res.json(jsonData);
+            // If it has a transcript field, return it
+            if (jsonData.transcript || jsonData.modelTranscript) {
+                return res.json({ transcript: jsonData.transcript || jsonData.modelTranscript });
+            }
         } catch (error) {
             console.error('Error reading JSON:', error);
-            return res.status(500).json({ error: 'Failed to read transcript file' });
         }
-    } else {
-        return res.status(404).json({ error: 'Transcript not found' });
     }
+    
+    // Fall back to CSV data
+    const reference = referenceData.get(audioFileName);
+    if (reference && reference.modelTranscript) {
+        return res.json({ transcript: reference.modelTranscript });
+    }
+    
+    return res.status(404).json({ error: 'Transcript not found' });
 });
 
 // Get reference data from CSV
