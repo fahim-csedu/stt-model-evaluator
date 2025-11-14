@@ -31,58 +31,108 @@ app.use((req, res, next) => {
     next();
 });
 
-// Load reference data from CSV
+// Load reference data from CSV files
 const referenceData = new Map();
-const csvPath = path.join(__dirname, 'webapp_reference.csv');
+const bnttsCSV = path.join(__dirname, 'STT Stats - bntts highest error.csv');
+const commonvoiceCSV = path.join(__dirname, 'STT Stats - common voice highest error.csv');
+
+function parseCSVLine(line) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let char of line) {
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    values.push(current.trim());
+    return values;
+}
 
 function loadReferenceData() {
-    if (!fs.existsSync(csvPath)) {
-        console.log('Warning: webapp_reference.csv not found');
-        return;
-    }
+    let totalLoaded = 0;
     
-    const csvContent = fs.readFileSync(csvPath, 'utf-8');
-    const lines = csvContent.split('\n');
-    
-    if (lines.length < 2) return;
-    
-    // Parse header
-    const headers = lines[0].split(',').map(h => h.trim());
-    
-    // Parse data rows
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+    // Load BNTTS data
+    if (fs.existsSync(bnttsCSV)) {
+        const csvContent = fs.readFileSync(bnttsCSV, 'utf-8');
+        const lines = csvContent.split('\n');
         
-        // Simple CSV parsing (handles quoted fields)
-        const values = [];
-        let current = '';
-        let inQuotes = false;
-        
-        for (let char of line) {
-            if (char === '"') {
-                inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-                values.push(current.trim());
-                current = '';
-            } else {
-                current += char;
+        // Skip header row (index 0)
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = parseCSVLine(line);
+            
+            // Column A (index 0) = WER filename, Column B (index 1) = annotated text
+            // Column E (index 4) = CER filename, Column F (index 5) = annotated text
+            if (values.length > 1 && values[0]) {
+                referenceData.set(values[0], {
+                    filename: values[0],
+                    sentence: values[1] || '',
+                    source: 'bntts_wer'
+                });
+                totalLoaded++;
+            }
+            
+            if (values.length > 5 && values[4]) {
+                referenceData.set(values[4], {
+                    filename: values[4],
+                    sentence: values[5] || '',
+                    source: 'bntts_cer'
+                });
+                totalLoaded++;
             }
         }
-        values.push(current.trim());
-        
-        // Create object from headers and values
-        const row = {};
-        headers.forEach((header, index) => {
-            row[header] = values[index] || '';
-        });
-        
-        if (row.filename) {
-            referenceData.set(row.filename, row);
-        }
+        console.log(`Loaded BNTTS reference data from ${bnttsCSV}`);
+    } else {
+        console.log(`Warning: ${bnttsCSV} not found`);
     }
     
-    console.log(`Loaded ${referenceData.size} reference records from CSV`);
+    // Load Common Voice data
+    if (fs.existsSync(commonvoiceCSV)) {
+        const csvContent = fs.readFileSync(commonvoiceCSV, 'utf-8');
+        const lines = csvContent.split('\n');
+        
+        // Skip header row (index 0)
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = parseCSVLine(line);
+            
+            // Column A (index 0) = WER filename, Column B (index 1) = annotated text
+            // Column E (index 4) = CER filename, Column F (index 5) = annotated text
+            if (values.length > 1 && values[0]) {
+                referenceData.set(values[0], {
+                    filename: values[0],
+                    sentence: values[1] || '',
+                    source: 'commonvoice_wer'
+                });
+                totalLoaded++;
+            }
+            
+            if (values.length > 5 && values[4]) {
+                referenceData.set(values[4], {
+                    filename: values[4],
+                    sentence: values[5] || '',
+                    source: 'commonvoice_cer'
+                });
+                totalLoaded++;
+            }
+        }
+        console.log(`Loaded Common Voice reference data from ${commonvoiceCSV}`);
+    } else {
+        console.log(`Warning: ${commonvoiceCSV} not found`);
+    }
+    
+    console.log(`Total loaded: ${totalLoaded} reference records`);
 }
 
 loadReferenceData();
@@ -308,11 +358,14 @@ app.get('/api/browse', requireAuth, (req, res) => {
 
         const audioFiles = [];
         const jsonFiles = [];
+        
+        // Allowed folders at root level
+        const allowedFolders = ['commonvoice_wer_error', 'commonvoice_cer_error', 'bntts_cer_error', 'bntts_wer_error'];
 
         items.forEach(item => {
             if (item.isDirectory()) {
-                // Skip the "remaining" folder
-                if (item.name.toLowerCase() === 'remaining') {
+                // At root level, only show the 4 validated folders
+                if (!relativePath && !allowedFolders.includes(item.name)) {
                     return;
                 }
                 
@@ -321,7 +374,7 @@ app.get('/api/browse', requireAuth, (req, res) => {
                 let fileCount = 0;
                 try {
                     const dirItems = fs.readdirSync(dirFullPath, { withFileTypes: true });
-                    fileCount = dirItems.filter(dirItem => dirItem.isFile()).length;
+                    fileCount = dirItems.filter(dirItem => dirItem.isFile() && dirItem.name.match(/\.wav$/i)).length;
                 } catch (error) {
                     fileCount = 0;
                 }
@@ -332,8 +385,8 @@ app.get('/api/browse', requireAuth, (req, res) => {
                     fileCount: fileCount
                 });
             } else {
-                // Only show MP3 files (not WAV files)
-                if (item.name.match(/\.mp3$/i)) {
+                // Show WAV files
+                if (item.name.match(/\.wav$/i)) {
                     audioFiles.push(item.name);
                 } else if (item.name.endsWith('.json')) {
                     jsonFiles.push(item.name);
@@ -342,7 +395,7 @@ app.get('/api/browse', requireAuth, (req, res) => {
         });
 
         audioFiles.forEach(audioFile => {
-            const baseName = audioFile.replace(/\.mp3$/i, '');
+            const baseName = audioFile.replace(/\.wav$/i, '');
             const matchingJson = jsonFiles.find(jsonFile => jsonFile === baseName + '.json');
             const audioPath = normalizePath(relativePath ? `${relativePath}/${audioFile}` : audioFile);
             const jsonPath = matchingJson ? normalizePath(relativePath ? `${relativePath}/${matchingJson}` : matchingJson) : null;
@@ -438,15 +491,35 @@ app.post('/api/annotation', requireAuth, async (req, res) => {
         annotation.annotator = session.username;
         annotation.timestamp = new Date().toISOString();
         
-        // Save to individual JSON file in annotations folder
+        // Determine which folder the file is in based on the filename
+        const filename = annotation.filename;
+        let audioFolder = null;
+        
+        // Check each validated folder for the audio file
+        const validatedFolders = ['commonvoice_wer_error', 'commonvoice_cer_error', 'bntts_cer_error', 'bntts_wer_error'];
+        for (const folder of validatedFolders) {
+            const audioPath = path.join(AUDIO_BASE_DIR, folder, `${filename}.wav`);
+            if (fs.existsSync(audioPath)) {
+                audioFolder = folder;
+                break;
+            }
+        }
+        
+        if (!audioFolder) {
+            return res.status(404).json({ error: 'Audio file not found in validated folders' });
+        }
+        
+        // Save JSON in the same folder as the audio file
+        const jsonPath = path.join(AUDIO_BASE_DIR, audioFolder, `${filename}.json`);
+        fs.writeFileSync(jsonPath, JSON.stringify(annotation, null, 2), 'utf-8');
+        
+        // Also save to annotations folder for backup
         const annotationsDir = path.join(__dirname, 'annotations');
         if (!fs.existsSync(annotationsDir)) {
             fs.mkdirSync(annotationsDir, { recursive: true });
         }
-        
-        const annotationFilename = `${annotation.filename}_annotation.json`;
+        const annotationFilename = `${filename}_annotation.json`;
         const annotationPath = path.join(annotationsDir, annotationFilename);
-        
         fs.writeFileSync(annotationPath, JSON.stringify(annotation, null, 2), 'utf-8');
         
         res.json({ success: true, message: 'Annotation saved' });

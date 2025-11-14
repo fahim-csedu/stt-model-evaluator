@@ -55,5 +55,9 @@ wheels/
 # API response cache (optional - uncomment if you don't want to track these)
 # api_response/
 
-# Webapp annotations
+# Webapp validated audio files and annotations
+webapp/validated/
 webapp/annotations/
+
+# API evaluator folders (but keep files in api_evaluator root)
+api_evaluator/*/
