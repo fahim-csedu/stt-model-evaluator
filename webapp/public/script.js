@@ -413,8 +413,18 @@ class AudioFileBrowser {
             this.transcriptContent.textContent = 'Loading...';
             this.referenceContent.textContent = 'Loading...';
             
+            // Wait for audio metadata to load to get duration
+            const audioDurationPromise = new Promise((resolve) => {
+                const onLoadedMetadata = () => {
+                    const duration = this.audioPlayer.duration;
+                    this.audioPlayer.removeEventListener('loadedmetadata', onLoadedMetadata);
+                    resolve(duration);
+                };
+                this.audioPlayer.addEventListener('loadedmetadata', onLoadedMetadata);
+            });
+            
             // Fetch transcripts and annotation in parallel
-            const [apiResponse, refResponse, annResponse] = await Promise.all([
+            const [apiResponse, refResponse, annResponse, audioDuration] = await Promise.all([
                 fetch(`/api/transcript?file=${encodeURIComponent(item.audioFile)}`, {
                     headers: { 'x-session-id': this.sessionId }
                 }),
@@ -423,7 +433,8 @@ class AudioFileBrowser {
                 }),
                 fetch(`/api/annotation?file=${encodeURIComponent(item.audioFile)}`, {
                     headers: { 'x-session-id': this.sessionId }
-                })
+                }),
+                audioDurationPromise
             ]);
             
             // Handle Model transcript
@@ -446,11 +457,11 @@ class AudioFileBrowser {
                 this.currentReference = reference;
                 this.referenceContent.textContent = reference.sentence || 'No reference available';
                 this.displayMetadata(reference);
-                this.populateAnnotationForm(item.name, reference);
+                this.populateAnnotationForm(item.name, reference, audioDuration);
             } else {
                 this.referenceContent.textContent = 'Reference transcript not available';
                 this.currentReference = null;
-                this.populateAnnotationForm(item.name, null);
+                this.populateAnnotationForm(item.name, null, audioDuration);
             }
             
             // Handle existing annotation
@@ -748,9 +759,12 @@ class AudioFileBrowser {
         this.fileMetadata.innerHTML = metadata.length > 0 ? metadata.join('') : '<span class="metadata-item">No metadata available</span>';
     }
     
-    populateAnnotationForm(filename, reference) {
+    populateAnnotationForm(filename, reference, audioDuration) {
         document.getElementById('annFilename').value = filename;
-        document.getElementById('annDuration').value = reference?.duration_s || '';
+        
+        // Use audio duration from player, fallback to CSV, or leave empty
+        const duration = audioDuration || reference?.duration_s || '';
+        document.getElementById('annDuration').value = duration ? duration.toFixed(2) : '';
         
         // Pre-fill gender from CSV
         const gender = reference?.gender || '';

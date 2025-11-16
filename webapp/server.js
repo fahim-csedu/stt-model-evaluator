@@ -36,23 +36,50 @@ const referenceData = new Map();
 const bnttsCSV = path.join(__dirname, 'STT Stats - bntts highest error.csv');
 const commonvoiceCSV = path.join(__dirname, 'STT Stats - common voice highest error.csv');
 
-function parseCSVLine(line) {
-    const values = [];
-    let current = '';
+function parseCSV(csvContent) {
+    const rows = [];
+    const lines = csvContent.split('\n');
+    let currentRow = [];
+    let currentField = '';
     let inQuotes = false;
+    let i = 0;
     
-    for (let char of line) {
+    while (i < csvContent.length) {
+        const char = csvContent[i];
+        
         if (char === '"') {
+            if (inQuotes && csvContent[i + 1] === '"') {
+                // Escaped quote
+                currentField += '"';
+                i += 2;
+                continue;
+            }
             inQuotes = !inQuotes;
         } else if (char === ',' && !inQuotes) {
-            values.push(current.trim());
-            current = '';
+            currentRow.push(currentField.trim());
+            currentField = '';
+        } else if (char === '\n' && !inQuotes) {
+            currentRow.push(currentField.trim());
+            if (currentRow.some(field => field.length > 0)) {
+                rows.push(currentRow);
+            }
+            currentRow = [];
+            currentField = '';
         } else {
-            current += char;
+            currentField += char;
+        }
+        i++;
+    }
+    
+    // Push last field and row if any
+    if (currentField || currentRow.length > 0) {
+        currentRow.push(currentField.trim());
+        if (currentRow.some(field => field.length > 0)) {
+            rows.push(currentRow);
         }
     }
-    values.push(current.trim());
-    return values;
+    
+    return rows;
 }
 
 function loadReferenceData() {
@@ -61,14 +88,11 @@ function loadReferenceData() {
     // Load BNTTS data
     if (fs.existsSync(bnttsCSV)) {
         const csvContent = fs.readFileSync(bnttsCSV, 'utf-8');
-        const lines = csvContent.split('\n');
+        const rows = parseCSV(csvContent);
         
         // Skip header row (index 0)
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            
-            const values = parseCSVLine(line);
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i];
             
             // bntts_wer_error: Column A to C (index 0-2) = filename, reference, model
             if (values.length > 2 && values[0]) {
@@ -102,14 +126,11 @@ function loadReferenceData() {
     // Load Common Voice data
     if (fs.existsSync(commonvoiceCSV)) {
         const csvContent = fs.readFileSync(commonvoiceCSV, 'utf-8');
-        const lines = csvContent.split('\n');
+        const rows = parseCSV(csvContent);
         
         // Skip header row (index 0)
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            
-            const values = parseCSVLine(line);
+        for (let i = 1; i < rows.length; i++) {
+            const values = rows[i];
             
             // commonvoice_wer_error: Column A to C (index 0-2) = filename, reference, model
             if (values.length > 2 && values[0]) {
