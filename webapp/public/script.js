@@ -127,6 +127,14 @@ class AudioFileBrowser {
             if (document.getElementById('annNoiseTraffic').checked) noises.push('Traffic');
             if (document.getElementById('annNoiseEcho').checked) noises.push('Echo');
             
+            // Collect mismatch reasons checkboxes
+            const mismatchReasons = [];
+            if (document.getElementById('annMismatchSyllable').checked) mismatchReasons.push('Syllable Merging/Splitting');
+            if (document.getElementById('annMismatchVowel').checked) mismatchReasons.push('Vowel Confusion');
+            if (document.getElementById('annMismatchNumeric').checked) mismatchReasons.push('Numeric vs Text');
+            if (document.getElementById('annMismatchSpelling').checked) mismatchReasons.push('Spelling Variation');
+            if (document.getElementById('annMismatchOther').checked) mismatchReasons.push('Other');
+            
             const filename = document.getElementById('annFilename').value;
             
             if (!filename) {
@@ -147,6 +155,7 @@ class AudioFileBrowser {
             
             const idealTranscript = document.getElementById('annIdealTranscript').value || '';
             const backgroundNoise = noises.length > 0 ? noises.join(', ') : 'None';
+            const mismatchReasonsStr = mismatchReasons.length > 0 ? mismatchReasons.join(', ') : 'None';
             const audioQuality = document.getElementById('annAudioQuality').value || '';
             const notes = document.getElementById('annNotes').value || '';
             
@@ -167,6 +176,7 @@ class AudioFileBrowser {
                 gender,
                 backgroundNoise,
                 audioQuality,
+                mismatchReasonsStr,
                 notes
             ];
             
@@ -188,6 +198,7 @@ class AudioFileBrowser {
                 gender,
                 backgroundNoise,
                 audioQuality,
+                mismatchReasons: mismatchReasonsStr,
                 notes,
                 mismatched_words: this.mismatchedWords
             };
@@ -782,7 +793,11 @@ class AudioFileBrowser {
         document.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
         
         // Clear checkboxes
-        const checkboxes = ['annNoiseMusic', 'annNoiseCrowd', 'annNoiseTraffic', 'annNoiseEcho'];
+        const checkboxes = [
+            'annNoiseMusic', 'annNoiseCrowd', 'annNoiseTraffic', 'annNoiseEcho',
+            'annMismatchSyllable', 'annMismatchVowel', 'annMismatchNumeric', 
+            'annMismatchSpelling', 'annMismatchOther'
+        ];
         checkboxes.forEach(id => {
             const element = document.getElementById(id);
             if (element) element.checked = false;
@@ -830,6 +845,14 @@ class AudioFileBrowser {
         document.getElementById('annNoiseCrowd').checked = noises.includes('Crowd');
         document.getElementById('annNoiseTraffic').checked = noises.includes('Traffic');
         document.getElementById('annNoiseEcho').checked = noises.includes('Echo');
+        
+        // Load mismatch reasons checkboxes
+        const mismatchReasons = (annotation.mismatchReasons || '').split(',').map(r => r.trim());
+        document.getElementById('annMismatchSyllable').checked = mismatchReasons.includes('Syllable Merging/Splitting');
+        document.getElementById('annMismatchVowel').checked = mismatchReasons.includes('Vowel Confusion');
+        document.getElementById('annMismatchNumeric').checked = mismatchReasons.includes('Numeric vs Text');
+        document.getElementById('annMismatchSpelling').checked = mismatchReasons.includes('Spelling Variation');
+        document.getElementById('annMismatchOther').checked = mismatchReasons.includes('Other');
         
         // Load text fields
         document.getElementById('annIdealTranscript').value = annotation.idealTranscript || '';

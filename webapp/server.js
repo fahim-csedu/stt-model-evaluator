@@ -606,11 +606,10 @@ app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Verify directories exist on startup
+// Verify directories exist on startup (warning only, don't exit)
 if (!fs.existsSync(AUDIO_BASE_DIR)) {
-    console.error(`ERROR: AUDIO_BASE_DIR does not exist: ${AUDIO_BASE_DIR}`);
-    console.error('Please check your config.local.js file');
-    process.exit(1);
+    console.warn(`WARNING: AUDIO_BASE_DIR does not exist: ${AUDIO_BASE_DIR}`);
+    console.warn('Server will start but audio files will not be available until directory is created');
 }
 
 app.listen(PORT, () => {
@@ -620,13 +619,15 @@ app.listen(PORT, () => {
     console.log(`Absolute path: ${path.resolve(AUDIO_BASE_DIR)}`);
     
     // List files in directory to verify
-    try {
-        const files = fs.readdirSync(AUDIO_BASE_DIR);
-        console.log(`Found ${files.length} items in audio directory`);
-        if (DEBUG) {
-            console.log('First few items:', files.slice(0, 5));
+    if (fs.existsSync(AUDIO_BASE_DIR)) {
+        try {
+            const files = fs.readdirSync(AUDIO_BASE_DIR);
+            console.log(`Found ${files.length} items in audio directory`);
+            if (DEBUG) {
+                console.log('First few items:', files.slice(0, 5));
+            }
+        } catch (error) {
+            console.error('Error reading audio directory:', error.message);
         }
-    } catch (error) {
-        console.error('Error reading audio directory:', error.message);
     }
 });
